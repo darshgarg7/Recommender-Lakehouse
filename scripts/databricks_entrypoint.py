@@ -17,6 +17,8 @@ def main() -> None:
         "--stage", choices=("bootstrap", "bronze", "silver", "gold", "certify"), required=True
     )
     parser.add_argument("--catalog", required=True)
+    parser.add_argument("--schema-prefix", default="")
+    parser.add_argument("--source-domain", default="Magazine_Subscriptions")
     parser.add_argument("--volume-root")
     parser.add_argument("--reviews-checksum")
     parser.add_argument("--metadata-checksum")
@@ -39,19 +41,23 @@ def main() -> None:
             args.volume_root,
             args.reviews_checksum,
             args.metadata_checksum,
+            args.source_domain,
+            args.schema_prefix,
         )
     elif args.stage == "bronze":
         if not args.source_kind or not args.source_path:
             parser.error("bronze requires --source-kind and --source-path")
-        ingest_bronze_stream(spark, args.catalog, args.source_kind, args.source_path)
+        ingest_bronze_stream(
+            spark, args.catalog, args.source_kind, args.source_path, args.schema_prefix
+        )
     elif args.stage == "silver":
-        build_silver_tables(spark, args.catalog)
+        build_silver_tables(spark, args.catalog, args.schema_prefix)
     elif args.stage == "gold":
-        build_gold_tables(spark, args.catalog)
+        build_gold_tables(spark, args.catalog, args.schema_prefix)
     else:
         if not args.job_run_id or not args.job_id:
             parser.error("certify requires --job-run-id and --job-id")
-        certify_pipeline_run(spark, args.catalog, args.job_run_id, args.job_id)
+        certify_pipeline_run(spark, args.catalog, args.job_run_id, args.job_id, args.schema_prefix)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-.PHONY: assets demo real-demo lint receipt test verify clean
+.PHONY: assets demo real-demo scale-download lint receipt test verify clean
 
 assets:
 	python3 scripts/generate_readme_assets.py
@@ -8,6 +8,10 @@ demo:
 
 real-demo:
 	PYTHONPATH=src python3 -m marketplace_recommender.cli real-demo --config conf/real_local.yml
+
+scale-download:
+	PYTHONPATH=src python3 -m marketplace_recommender.cli download-category \
+		--category Appliances --output artifacts/scale-appliances
 
 lint:
 	ruff check src scripts tests

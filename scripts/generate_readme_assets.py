@@ -201,12 +201,103 @@ def pipeline_evidence(evidence: dict) -> None:
     )
 
 
+def scale_benchmark(evidence: dict) -> None:
+    benchmark = evidence["scale_benchmark"]
+    dataset = benchmark["dataset"]
+    initial = benchmark["initial_run"]
+    replay = benchmark["replay_run"]
+    tables = benchmark["tables"]
+    width, height = 1200, 470
+    body = [
+        '<text x="45" y="46" font-size="26" font-weight="700">Certified multi-million-row scale</text>',
+        f'<text x="45" y="74" font-size="15" class="muted">Amazon Reviews 2023 · {dataset["category"]} · Databricks serverless run {initial["run_id"]}</text>',
+    ]
+    cards = [
+        (
+            40,
+            "Landed source",
+            f"{dataset['landed_lines'] / 1_000_000:.2f}M lines",
+            f"{dataset['total_bytes'] / 1_000_000_000:.2f} GB · SHA-256 verified",
+        ),
+        (
+            325,
+            "Canonical state",
+            f"{tables['silver_interactions'] / 1_000_000:.2f}M interactions",
+            f"{tables['silver_products']:,} parent products",
+        ),
+        (
+            610,
+            "Point-in-time Gold",
+            f"{tables['gold_training_labels'] / 1_000_000:.2f}M examples",
+            "labels = sequences = item snapshots",
+        ),
+        (
+            895,
+            "Post-integrity rate",
+            f"{initial['post_integrity_throughput_lines_per_second'] / 1_000:.1f}K lines/s",
+            f"{initial['post_integrity_seconds']:.1f}s measured critical path",
+        ),
+    ]
+    for x, label, value, detail in cards:
+        body.extend(
+            [
+                f'<rect x="{x}" y="98" width="265" height="82" rx="14" fill="#ffffff" stroke="#cbd5e1"/>',
+                f'<text x="{x + 16}" y="121" font-size="12" class="muted">{label}</text>',
+                f'<text x="{x + 16}" y="148" font-size="22" font-weight="700">{value}</text>',
+                f'<text x="{x + 16}" y="169" font-size="12" class="muted">{detail}</text>',
+            ]
+        )
+    stages = initial["stage_execution_seconds"]
+    boxes = [
+        (40, 236, 170, "Integrity gate", f"{stages['integrity_bootstrap']}s · constant memory"),
+        (250, 212, 180, "Bronze reviews", f"{stages['bronze_reviews']}s · 2.13M lines"),
+        (250, 286, 180, "Bronze metadata", f"{stages['bronze_metadata']}s · 94.3K lines"),
+        (470, 249, 170, "Silver", f"{stages['silver']}s · typed contracts"),
+        (680, 249, 170, "Gold windows", f"{stages['gold']}s · strict as-of"),
+        (890, 249, 230, "Certification", f"{stages['certify']}s · 11/11 PASS"),
+    ]
+    for x, y, box_width, label, detail in boxes:
+        body.extend(
+            [
+                f'<rect x="{x}" y="{y}" width="{box_width}" height="60" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>',
+                f'<text x="{x + 14}" y="{y + 25}" font-size="14" font-weight="700">{label}</text>',
+                f'<text x="{x + 14}" y="{y + 45}" font-size="11" class="muted">{detail}</text>',
+            ]
+        )
+    for x1, y1, x2, y2 in (
+        (210, 266, 250, 242),
+        (210, 266, 250, 316),
+        (430, 242, 470, 279),
+        (430, 316, 470, 279),
+        (640, 279, 680, 279),
+        (850, 279, 890, 279),
+    ):
+        body.extend(
+            [
+                f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#64748b" stroke-width="2"/>',
+                f'<circle cx="{x2}" cy="{y2}" r="3" fill="#64748b"/>',
+            ]
+        )
+    body.extend(
+        [
+            '<rect x="40" y="388" width="1080" height="48" rx="12" fill="#ecfdf5" stroke="#86efac"/>',
+            '<text x="60" y="417" font-size="14" font-weight="700" fill="#166534">REPLAY CERTIFIED</text>',
+            f'<text x="215" y="417" font-size="13">run {replay["run_id"]} · {replay["duration_seconds"]:.3f}s · source fingerprint unchanged · row counts unchanged · replay attempts={replay["manifest_replay_attempts"]}</text>',
+        ]
+    )
+    _write(
+        "scale-benchmark.svg",
+        _svg_document(width, height, body, "Certified multi-million-row scale benchmark"),
+    )
+
+
 def main() -> None:
     evidence = json.loads(EVIDENCE.read_text(encoding="utf-8"))
     model_comparison(evidence)
     long_tail_frontier(evidence)
     pipeline_evidence(evidence)
-    print(f"generated 3 README visuals in {ASSETS}")
+    scale_benchmark(evidence)
+    print(f"generated 4 README visuals in {ASSETS}")
 
 
 if __name__ == "__main__":

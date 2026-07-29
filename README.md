@@ -11,54 +11,113 @@ both sides of that loop:
 2. Progressively specialize item representations as legitimate evidence becomes available.
 3. Carry the evaluation policy and evidence chain all the way into serving—not just into a report.
 
-This is an evidence-first portfolio project. It has processed real
-[Amazon Reviews 2023](https://amazon-reviews-2023.github.io/) data in a live Databricks workspace,
-but it does **not** claim to have trained on the full Amazon corpus or to have demonstrated CTR,
-revenue, latency, or causal lift.
+This is an evidence-first portfolio project. It has processed a 2.22-million-line
+[Amazon Reviews 2023](https://amazon-reviews-2023.github.io/) category in a live Databricks
+workspace and replayed the result under the same contracts. It does **not** claim to have trained
+on the full Amazon corpus or to have demonstrated CTR, revenue, online latency, or causal lift.
 
 ## Project at a glance
 
 | Evidence | Verified result |
 |---|---:|
-| Live Databricks job | 6 serverless tasks; replay and fail-closed certification succeeded |
-| Real landed input | 71,497 reviews + 3,391 product records |
-| Canonical Silver output | 70,922 interactions + 3,391 parent products |
-| Leakage-safe Gold output | 53,897 labels, sequences, and item snapshots |
+| Live Databricks scale job | 6 serverless tasks; initial run and counted replay certified |
+| Checksummed landed input | 2,128,605 reviews + 94,327 product records; 1.215 GB |
+| Content-addressed Bronze | 2,105,949 unique reviews + 94,327 unique product records |
+| Canonical Silver output | 2,105,948 interactions + 94,327 parent products |
+| Leakage-safe Gold output | 1,921,223 labels, sequences, and item snapshots |
+| Post-integrity throughput | 2.22M lines transformed and certified in 152.653 s; 14.6K lines/s |
+| Measured Delta footprint | 1,066,761,382 bytes across 106 files and 7 principal tables |
 | Real local model scope | 1,683 interactions from 400 repeat users |
 | Real evaluation set | 263 positive test examples |
-| Automated tests | 30 passing |
+| Automated tests | 35 passing |
 | Replay assertions | 0 duplicate Bronze/Silver IDs after a counted full replay |
 
-The final live replay was Databricks run `144998663962696`. It completed all six tasks in 208.5
-seconds, incremented both manifest replay counters to two, preserved every business row count, and
-persisted a passing eleven-assertion certificate.
+The clean scale run was `870720668226580`; its counted replay was `940162686328743`. Both passed
+all eleven fail-closed assertions with zero temporal leakage. The replay completed in 172.780
+seconds, preserved every business row count and the source-set fingerprint, and incremented both
+manifest replay counters to one.
 
-![Verified Databricks pipeline evidence](assets/databricks-pipeline-evidence.svg)
+![Certified multi-million-row scale benchmark](assets/scale-benchmark.svg)
 
 ## What is built—and what is not
 
 | Capability | Status | Evidence |
 |---|---|---|
 | Deterministic local Bronze-to-batch slice | **Verified** | `make demo`; integration and replay tests |
-| Real Amazon Reviews ingestion | **Verified** | Magazine Subscriptions review and metadata objects |
-| Live Databricks Bronze/Silver/Gold | **Verified** | Serverless bundle runs `813156246300863` and `144998663962696` |
+| Real Amazon Reviews ingestion | **Verified** | Magazine Subscriptions and Appliances review/metadata objects |
+| Live Databricks Bronze/Silver/Gold | **Verified** | Isolated scale schemas; certified run `870720668226580` |
+| Multi-million-row batch scale | **Verified** | 2.22M landed lines; 2.11M Silver interactions; 1.92M aligned Gold rows |
 | SHA-256 manifest gate | **Verified** | Databricks bootstrap recomputes both landed hashes before commit |
-| Auto Loader replay | **Verified** | Full replay kept Bronze and Silver counts unchanged |
+| Auto Loader replay | **Verified** | Run `940162686328743` kept Bronze, Silver, and Gold counts unchanged |
 | Point-in-time features | **Verified** | Unit tests plus live SQL leakage assertions |
 | Local content/collaborative hybrid | **Verified locally** | Deterministic exact-index evaluation |
 | Pairwise learned ranking and reranking | **Verified locally** | Real and synthetic evaluation artifacts |
 | Evidence-conditioned representation routing | **Verified locally** | Each serving row declares its legal signals and representation path |
 | Policy-enforced champion serving | **Verified locally** | Aggregate, retrieval, and protected-cohort guardrails fail closed |
 | Tamper-evident run receipts | **Verified locally** | Independent CLI verifies seven content-bound artifacts |
-| Databricks pipeline certification | **Verified live** | Run `144998663962696`: 11/11 assertions passed and persisted in Delta |
+| Databricks pipeline certification | **Verified live** | Initial scale run and replay: 11/11 assertions persisted in Delta |
 | XGBoost LambdaMART adapter | Implemented, **not used in reported runs** | Optional `ml` dependency |
 | MLflow logging adapter | Implemented, **not used in reported runs** | Optional Databricks dependency |
 | Spark ALS, real SASRec, transformer embeddings | **Not trained** | Integration roadmap |
 | Databricks Vector Search / ANN serving | **Not deployed** | Exact local index is the validation oracle |
 | Online service performance | **Not measured** | Optional synthetic-persona FastAPI surface only |
-| Electronics or all-domain benchmark | **Not run** | No large-scale throughput or cost claim |
+| All-domain / full-corpus benchmark | **Not run** | Scale claim is limited to one 2.22M-line offline category |
 
 ## Measured results
+
+### Demonstrated scale: Appliances
+
+The `scale` bundle target is a separate evidence surface, not a larger value substituted into the
+Magazine demo. It uses isolated `workspace.scale_*` schemas, a separate Unity Catalog landing path,
+and the 1.215 GB Amazon Reviews 2023 Appliances category. The landing command counted every JSONL
+line and computed both SHA-256 digests before upload; Databricks recomputed those digests before it
+was allowed to write the manifest.
+
+| Boundary | Measured result |
+|---|---:|
+| Landed source | 2,222,932 JSONL lines; 1,214,749,887 bytes |
+| Review object | 2,128,605 lines; 929,451,412 bytes |
+| Metadata object | 94,327 lines; 285,298,475 bytes |
+| Unique Bronze state | 2,105,949 reviews + 94,327 metadata records |
+| Canonical Silver state | 2,105,948 interactions + 94,327 parent products |
+| Strict point-in-time Gold | 1,921,223 labels = sequences = item snapshots |
+| Principal Delta footprint | 1,066,761,382 bytes; 106 files; 7 tables |
+
+Exact-content addressing deliberately collapsed 22,656 duplicate review lines (1.019% of landed
+lines); the source is immutable, so byte-identical records do not receive artificial identities
+from file ordering. Silver contract processing yields one fewer canonical interaction.
+Certification found zero duplicate record IDs, zero duplicate interaction IDs, zero flagged
+interactions, and zero item or sequence leakage.
+
+| Initial run stage | Execution time |
+|---|---:|
+| Constant-memory SHA-256 integrity gate | 539 s |
+| Bronze reviews | 50 s |
+| Bronze metadata, parallel with reviews | 44 s |
+| Silver contracts and canonicalization | 33 s |
+| Gold point-in-time windows | 36 s |
+| Fail-closed certification | 23 s |
+
+Run `870720668226580` took 695.653 seconds end to end. The cold integrity read was throttled on
+Free Edition, so it is reported separately: from manifest completion to certified job completion,
+the pipeline processed 2.22M landed lines in 152.653 seconds, or 14,561.99 landed lines/second.
+This is an observed offline batch rate, not a latency SLO or a paid-workspace cost benchmark.
+
+The replay, run `940162686328743`, completed in 172.780 seconds. It retained the source fingerprint
+`68848385…bd9`, kept every table count identical, incremented both manifest replay counters from
+zero to one, and wrote a second 11/11 certificate. Gold uses partitioned `RANGE ... -1` windows,
+which exclude timestamp ties and require a bounded sort plan instead of label-to-history
+self-joins that can grow quadratically.
+
+| Delta table | Rows | Files | Size |
+|---|---:|---:|---:|
+| `workspace.scale_bronze.bronze_reviews` | 2,105,949 | 32 | 348,457,994 B |
+| `workspace.scale_bronze.bronze_product_metadata` | 94,327 | 32 | 66,164,245 B |
+| `workspace.scale_silver.silver_products` | 94,327 | 17 | 39,821,773 B |
+| `workspace.scale_silver.silver_interactions` | 2,105,948 | 11 | 290,390,029 B |
+| `workspace.scale_gold.gold_training_labels` | 1,921,223 | 2 | 111,749,431 B |
+| `workspace.scale_gold.gold_user_sequences_asof` | 1,921,223 | 6 | 106,850,590 B |
+| `workspace.scale_gold.gold_item_statistics_asof` | 1,921,223 | 6 | 103,327,320 B |
 
 ### Live Databricks lakehouse
 
@@ -97,6 +156,8 @@ the same raw records again.
 The final task persisted `lakehouse-certification/v1` with `passed = true`, all eleven checks green,
 and no failed check names. Its source-set digest is `583f28aa…98e5`; its materialized table-state
 digest is `9a65c062…5fc5`. These are evidence identifiers, not security signatures.
+
+![Verified Magazine Databricks pipeline evidence](assets/databricks-pipeline-evidence.svg)
 
 ### Real-data recommendation quality
 
@@ -147,7 +208,8 @@ content-similarity champion.
 | Synthetic local | 240 interactions | 144 interactions | Sub-second core stages | $0 incremental |
 | Real local | 33.3 MB reviews + 4.1 MB metadata; 70,922 interactions | 1,009 interactions | 31.8 s measured stages | $0 incremental |
 | Databricks certified replay | 71,497 reviews + 3,391 metadata rows | ETL + 11 assertions | 208.5 s job runtime | Not measured; Free Edition |
-| Electronics integration | Not run | Not run | Not measured | Not measured |
+| Databricks Appliances scale | 2.22M lines; 2.11M Silver interactions | ETL + 11 assertions | 695.653 s total; 152.653 s post-integrity | Not measured; Free Edition |
+| Databricks scale replay | Same immutable source and table state | Replay + 11 assertions | 172.780 s job runtime | Not measured; Free Edition |
 | Full Amazon corpus | Not run | Not run | Not measured | Not measured |
 
 ## Architecture
@@ -225,6 +287,9 @@ over.
 | Recommend `parent_asin`, retain child `asin` | Prevent variants from crowding the list without losing lineage |
 | Require `event_timestamp < label_timestamp` | Turns leakage prevention into a data contract, not a modeling convention |
 | Gate every landed object by SHA-256 | Makes partial downloads and silent source changes fail closed |
+| Store exact JSONL lines in Bronze | Avoids nested schema-inference cost and preserves additive source evolution for typed Silver parsing |
+| Content-address Bronze records | Removes global file-order sorts; byte-identical records in one immutable object collapse deterministically |
+| Build as-of state with partitioned time windows | Prevents the quadratic growth of label-to-history self-joins while excluding timestamp ties |
 | Blend content and collaboration by history count | Gives zero-history products a representation without discarding warm-item behavior |
 | Compare against popularity and content on identical splits | Prevents a sophisticated architecture from hiding behind weak baselines |
 | Content-address the promotion policy | A threshold change creates a new policy identity instead of silently changing deployment semantics |
@@ -237,7 +302,7 @@ over.
 | Layer | Principal outputs | Contract |
 |---|---|---|
 | Landing | JSONL objects | File is usable only after a matching SHA-256 is committed |
-| Bronze | reviews, metadata, manifest, quarantine | Deterministic record ID, raw payload, checksum, row number, rescue data |
+| Bronze | reviews, metadata, manifest, quarantine | Exact raw line, content-addressed record ID, source checksum, replay checkpoint |
 | Silver | parent products, variants, interactions | Stable keys, typed fields, deduplication, quality status |
 | Gold | labels, sequences, item statistics | Every behavioral input is strictly earlier than its label time |
 | Serving | batch recommendations | Champion, policy, evidence capabilities, decision reason, and score regret travel with every row |
@@ -278,8 +343,8 @@ not a claim about confirmed product launch time.
 | Interrupted download | Partial object remains retryable; no committed manifest row | Implemented; not failure-injected in Databricks |
 | Duplicate file | Existing checksum is treated as replay | Stable fingerprints and replay test |
 | Completed Auto Loader replay | Checkpoint skips committed files without duplicating business keys | Successful live full replay |
-| Malformed JSON | Bad row is quarantined; valid rows continue | Failure-injection test |
-| New source field | Data lands in rescued payload until the contract changes | Implemented Auto Loader rescue path |
+| Malformed local JSON | Bad row is quarantined; valid rows continue | Failure-injection test |
+| New source field | Exact raw line remains in Bronze until the versioned Silver contract adopts it | Live raw-line Auto Loader path |
 | Invalid key/rating/time | Row fails the Silver contract | Contract tests and quality output |
 | Lost Gold output | Rebuild from Silver and the recorded cutoff | Designed path; live repair drill remains |
 | Candidate model underperforms | Serving routes to the strongest baseline | Executable promotion and integration tests |
@@ -394,6 +459,32 @@ databricks bundle deploy -t dev -p <profile>
 databricks bundle run marketplace_pipeline -t dev -p <profile>
 ```
 
+To reproduce the demonstrated Appliances scale run, download and validate the larger category,
+land it under the isolated scale path, and select the checked `scale` target:
+
+```bash
+make scale-download
+
+databricks fs mkdir \
+  dbfs:/Volumes/workspace/default/marketplace_landing/scale/appliances/reviews -p <profile>
+databricks fs mkdir \
+  dbfs:/Volumes/workspace/default/marketplace_landing/scale/appliances/metadata -p <profile>
+databricks fs cp artifacts/scale-appliances/landing/reviews_Appliances.jsonl \
+  dbfs:/Volumes/workspace/default/marketplace_landing/scale/appliances/reviews/reviews_Appliances.jsonl \
+  --overwrite -p <profile>
+databricks fs cp artifacts/scale-appliances/landing/meta_Appliances.jsonl \
+  dbfs:/Volumes/workspace/default/marketplace_landing/scale/appliances/metadata/meta_Appliances.jsonl \
+  --overwrite -p <profile>
+
+databricks bundle validate -t scale -p <profile>
+databricks bundle deploy -t scale -p <profile>
+databricks bundle run marketplace_pipeline -t scale -p <profile>
+```
+
+The target fixes the two observed SHA-256 digests in source control and writes only to
+`workspace.scale_bronze`, `scale_silver`, `scale_gold`, and the other `scale_*` schemas. Running it
+again is the counted replay; no checkpoint deletion is part of the benchmark.
+
 The deployed graph is:
 
 ```text
@@ -446,7 +537,10 @@ The suite currently covers:
 
 - Source and canonical schema contracts.
 - Parent-ASIN and nested real Amazon metadata shapes.
+- Constant-memory landed-object hashing and isolated scale schemas.
+- Raw-line, parallel content-addressed Bronze identity without global row ordering.
 - Strict as-of joins and future-history rejection.
+- Window-plan contracts that prohibit quadratic Gold history joins.
 - Future-positive-safe negative sampling.
 - Zero-history gate boundaries.
 - Evidence-capability transitions and catalog fallbacks.
@@ -465,7 +559,8 @@ independently verifiable after CI.
 
 In priority order:
 
-1. Run a larger domain such as Electronics and publish exact bytes, duration, DBUs, and cloud cost.
+1. Run a category-sharded, multi-file benchmark on paid compute and publish DBUs, dollars, shuffle,
+   spill, and executor utilization—not just wall time.
 2. Add and compare Spark MLlib ALS, a real sequential model, and a transformer content encoder.
 3. Evaluate full-catalog retrieval with exact-vs-approximate recall and identical negative pools.
 4. Train LambdaMART on a larger validation set and publish user-level confidence intervals.
@@ -486,8 +581,10 @@ zero- and sparse-history inventory from product content. The optional public API
 
 Amazon reviews are selective observations, not impressions or clicks. Unobserved products are not
 confirmed negatives. Product metadata is a crawl-time snapshot, and image URLs can disappear.
-Popularity may encode seller and exposure inequities. Nothing here supports a claim about CTR,
-conversion, revenue, causal marketplace impact, production latency, or full-corpus scale.
+Popularity may encode seller and exposure inequities. The project demonstrates one certified
+2.22-million-line offline batch and replay; it does not establish all-domain or marketplace-traffic
+scale. Nothing here supports a claim about CTR, conversion, revenue, causal marketplace impact, or
+production online latency.
 
 ## License
 

@@ -10,6 +10,10 @@ artifacts:
 variables:
   catalog:
     default: workspace
+  schema_prefix:
+    default: ""
+  source_domain:
+    default: Magazine_Subscriptions
   volume_root:
     default: /Volumes/workspace/default/marketplace_landing
   reviews_checksum:
@@ -32,6 +36,10 @@ resources:
               - bootstrap
               - --catalog
               - ${var.catalog}
+              - --schema-prefix
+              - ${var.schema_prefix}
+              - --source-domain
+              - ${var.source_domain}
               - --volume-root
               - ${var.volume_root}
               - --reviews-checksum
@@ -53,6 +61,8 @@ resources:
               - ${var.volume_root}/reviews
               - --catalog
               - ${var.catalog}
+              - --schema-prefix
+              - ${var.schema_prefix}
         - task_key: bronze_metadata
           depends_on:
             - task_key: bootstrap
@@ -68,6 +78,8 @@ resources:
               - ${var.volume_root}/metadata
               - --catalog
               - ${var.catalog}
+              - --schema-prefix
+              - ${var.schema_prefix}
         - task_key: silver
           depends_on:
             - task_key: bronze_reviews
@@ -80,6 +92,8 @@ resources:
               - silver
               - --catalog
               - ${var.catalog}
+              - --schema-prefix
+              - ${var.schema_prefix}
         - task_key: gold
           depends_on:
             - task_key: silver
@@ -91,6 +105,8 @@ resources:
               - gold
               - --catalog
               - ${var.catalog}
+              - --schema-prefix
+              - ${var.schema_prefix}
         - task_key: certify
           depends_on:
             - task_key: gold
@@ -102,6 +118,8 @@ resources:
               - certify
               - --catalog
               - ${var.catalog}
+              - --schema-prefix
+              - ${var.schema_prefix}
               - --job-run-id
               - "{{job.run_id}}"
               - --job-id
@@ -127,3 +145,12 @@ targets:
     mode: production
     variables:
       catalog: workspace
+  scale:
+    mode: development
+    variables:
+      catalog: workspace
+      schema_prefix: scale
+      source_domain: Appliances
+      volume_root: /Volumes/workspace/default/marketplace_landing/scale/appliances
+      reviews_checksum: d9dd03aa9be0c8e6fea66d8ce99a7e5b359e272d6323186c1aa80f6d36af1dab
+      metadata_checksum: b25ae892af7bc452c4a54b7e4fee52f4c3e9adf058768ca3cb07ecb8d328b41e

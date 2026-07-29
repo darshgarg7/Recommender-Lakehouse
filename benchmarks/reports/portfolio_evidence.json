@@ -35,6 +35,72 @@
     },
     "workspace_tier": "Databricks Free Edition"
   },
+  "scale_benchmark": {
+    "dataset": {
+      "category": "Appliances",
+      "landed_lines": 2222932,
+      "metadata_bytes": 285298475,
+      "metadata_lines": 94327,
+      "metadata_sha256": "b25ae892af7bc452c4a54b7e4fee52f4c3e9adf058768ca3cb07ecb8d328b41e",
+      "review_bytes": 929451412,
+      "review_lines": 2128605,
+      "review_sha256": "d9dd03aa9be0c8e6fea66d8ce99a7e5b359e272d6323186c1aa80f6d36af1dab",
+      "source": "Amazon Reviews 2023",
+      "total_bytes": 1214749887
+    },
+    "delta_footprint": {
+      "measured_files": 106,
+      "measured_size_bytes": 1066761382,
+      "tables": {
+        "bronze_product_metadata": {"files": 32, "size_bytes": 66164245},
+        "bronze_reviews": {"files": 32, "size_bytes": 348457994},
+        "gold_item_statistics_asof": {"files": 6, "size_bytes": 103327320},
+        "gold_training_labels": {"files": 2, "size_bytes": 111749431},
+        "gold_user_sequences_asof": {"files": 6, "size_bytes": 106850590},
+        "silver_interactions": {"files": 11, "size_bytes": 290390029},
+        "silver_products": {"files": 17, "size_bytes": 39821773}
+      }
+    },
+    "initial_run": {
+      "assertion_count": 11,
+      "duration_seconds": 695.653,
+      "failed_assertion_count": 0,
+      "job_id": 695192764244318,
+      "post_integrity_seconds": 152.653,
+      "post_integrity_throughput_lines_per_second": 14561.99,
+      "run_id": 870720668226580,
+      "source_set_sha256": "68848385a0ab7f2406efd779303b74caa01d931a9cc37bd8bf4220bc89e22bd9",
+      "stage_execution_seconds": {
+        "bronze_metadata": 44,
+        "bronze_reviews": 50,
+        "certify": 23,
+        "gold": 36,
+        "integrity_bootstrap": 539,
+        "silver": 33
+      },
+      "status": "SUCCESS",
+      "table_state_sha256": "1a9a5fcb98df5352db6cb9dd61c74ab5cf10569560b484ff76ad1c81c614378d"
+    },
+    "replay_run": {
+      "assertion_count": 11,
+      "duration_seconds": 172.780,
+      "failed_assertion_count": 0,
+      "manifest_replay_attempts": 1,
+      "run_id": 940162686328743,
+      "source_set_sha256": "68848385a0ab7f2406efd779303b74caa01d931a9cc37bd8bf4220bc89e22bd9",
+      "status": "SUCCESS"
+    },
+    "tables": {
+      "bronze_product_metadata": 94327,
+      "bronze_reviews": 2105949,
+      "gold_item_statistics_asof": 1921223,
+      "gold_training_labels": 1921223,
+      "gold_user_sequences_asof": 1921223,
+      "silver_interactions": 2105948,
+      "silver_products": 94327
+    },
+    "workspace_tier": "Databricks Free Edition"
+  },
   "long_tail_frontier": [
     {"long_tail_exposure": 0.9410646388, "long_tail_weight": 0.0, "ndcg_at_10": 0.0263822698},
     {"long_tail_exposure": 0.9479087452, "long_tail_weight": 0.1, "ndcg_at_10": 0.0256208508},

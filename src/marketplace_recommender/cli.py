@@ -466,6 +466,51 @@ def run_real_integration(config_path: str | Path, category: str) -> dict[str, An
     )
 
 
+def download_real_category(output_dir: str | Path, category: str) -> dict[str, Any]:
+    """Download and validate a real category without loading it into the local in-memory model."""
+    if not category.replace("_", "").isalnum():
+        raise ValueError("category may contain only letters, numbers, and underscores")
+    output = Path(output_dir).resolve()
+    landing = output / "landing"
+    manifest = ManifestStore(output / "bronze" / "manifest.jsonl")
+    base = "https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023/resolve/main/raw"
+    objects = [
+        {
+            "source_url": f"{base}/review_categories/{category}.jsonl?download=true",
+            "source_domain": category,
+            "source_kind": "reviews",
+            "filename": f"reviews_{category}.jsonl",
+        },
+        {
+            "source_url": f"{base}/meta_categories/meta_{category}.jsonl?download=true",
+            "source_domain": category,
+            "source_kind": "metadata",
+            "filename": f"meta_{category}.jsonl",
+        },
+    ]
+    downloaded = BoundedDownloader(manifest, workers=2, retries=4).download_all(objects, landing)
+    report = {
+        "category": category,
+        "total_bytes": sum(int(row["compressed_bytes"]) for row in downloaded),
+        "total_rows": sum(int(row["validated_rows"]) for row in downloaded),
+        "objects": [
+            {
+                "source_kind": row["source_kind"],
+                "object_path": row["object_path"],
+                "bytes": row["compressed_bytes"],
+                "rows": row["validated_rows"],
+                "sha256": row["checksum"],
+            }
+            for row in sorted(downloaded, key=lambda value: str(value["source_kind"]))
+        ],
+    }
+    report_path = output / "monitoring" / "source_download.json"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return report
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="marketplace-recommender")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -476,6 +521,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     real.add_argument("--config", default="conf/real_local.yml")
     real.add_argument("--category", default="Magazine_Subscriptions")
+    download = commands.add_parser(
+        "download-category", help="download and validate a category without local model training"
+    )
+    download.add_argument("--category", required=True)
+    download.add_argument("--output", required=True)
     verify = commands.add_parser(
         "verify-receipt", help="verify a tamper-evident run receipt and all bound artifacts"
     )
@@ -490,6 +540,8 @@ def main() -> None:
         run_demo(args.config)
     elif args.command == "real-demo":
         run_real_integration(args.config, args.category)
+    elif args.command == "download-category":
+        download_real_category(args.output, args.category)
     elif args.command == "verify-receipt":
         print(json.dumps(verify_run_receipt(args.receipt, args.root), indent=2, sort_keys=True))
 

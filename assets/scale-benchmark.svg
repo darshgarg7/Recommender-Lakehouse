@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" role="img" aria-labelledby="title desc">
+  <title id="title">Certified multi-million-row scale benchmark</title>
+  <desc id="desc">Generated from benchmarks/reports/portfolio_evidence.json.</desc>
+  <rect width="100%" height="100%" rx="20" fill="#f8fafc"/>
+  <style>
+    text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; fill: #0f172a; }
+    .muted { fill: #64748b; }
+    .grid { stroke: #cbd5e1; stroke-width: 1; }
+  </style>
+<text x="45" y="46" font-size="26" font-weight="700">Certified multi-million-row scale</text>
+<text x="45" y="74" font-size="15" class="muted">Amazon Reviews 2023 · Appliances · Databricks serverless run 870720668226580</text>
+<rect x="40" y="98" width="265" height="82" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="56" y="121" font-size="12" class="muted">Landed source</text>
+<text x="56" y="148" font-size="22" font-weight="700">2.22M lines</text>
+<text x="56" y="169" font-size="12" class="muted">1.21 GB · SHA-256 verified</text>
+<rect x="325" y="98" width="265" height="82" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="341" y="121" font-size="12" class="muted">Canonical state</text>
+<text x="341" y="148" font-size="22" font-weight="700">2.11M interactions</text>
+<text x="341" y="169" font-size="12" class="muted">94,327 parent products</text>
+<rect x="610" y="98" width="265" height="82" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="626" y="121" font-size="12" class="muted">Point-in-time Gold</text>
+<text x="626" y="148" font-size="22" font-weight="700">1.92M examples</text>
+<text x="626" y="169" font-size="12" class="muted">labels = sequences = item snapshots</text>
+<rect x="895" y="98" width="265" height="82" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="911" y="121" font-size="12" class="muted">Post-integrity rate</text>
+<text x="911" y="148" font-size="22" font-weight="700">14.6K lines/s</text>
+<text x="911" y="169" font-size="12" class="muted">152.7s measured critical path</text>
+<rect x="40" y="236" width="170" height="60" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+<text x="54" y="261" font-size="14" font-weight="700">Integrity gate</text>
+<text x="54" y="281" font-size="11" class="muted">539s · constant memory</text>
+<rect x="250" y="212" width="180" height="60" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+<text x="264" y="237" font-size="14" font-weight="700">Bronze reviews</text>
+<text x="264" y="257" font-size="11" class="muted">50s · 2.13M lines</text>
+<rect x="250" y="286" width="180" height="60" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+<text x="264" y="311" font-size="14" font-weight="700">Bronze metadata</text>
+<text x="264" y="331" font-size="11" class="muted">44s · 94.3K lines</text>
+<rect x="470" y="249" width="170" height="60" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+<text x="484" y="274" font-size="14" font-weight="700">Silver</text>
+<text x="484" y="294" font-size="11" class="muted">33s · typed contracts</text>
+<rect x="680" y="249" width="170" height="60" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+<text x="694" y="274" font-size="14" font-weight="700">Gold windows</text>
+<text x="694" y="294" font-size="11" class="muted">36s · strict as-of</text>
+<rect x="890" y="249" width="230" height="60" rx="13" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+<text x="904" y="274" font-size="14" font-weight="700">Certification</text>
+<text x="904" y="294" font-size="11" class="muted">23s · 11/11 PASS</text>
+<line x1="210" y1="266" x2="250" y2="242" stroke="#64748b" stroke-width="2"/>
+<circle cx="250" cy="242" r="3" fill="#64748b"/>
+<line x1="210" y1="266" x2="250" y2="316" stroke="#64748b" stroke-width="2"/>
+<circle cx="250" cy="316" r="3" fill="#64748b"/>
+<line x1="430" y1="242" x2="470" y2="279" stroke="#64748b" stroke-width="2"/>
+<circle cx="470" cy="279" r="3" fill="#64748b"/>
+<line x1="430" y1="316" x2="470" y2="279" stroke="#64748b" stroke-width="2"/>
+<circle cx="470" cy="279" r="3" fill="#64748b"/>
+<line x1="640" y1="279" x2="680" y2="279" stroke="#64748b" stroke-width="2"/>
+<circle cx="680" cy="279" r="3" fill="#64748b"/>
+<line x1="850" y1="279" x2="890" y2="279" stroke="#64748b" stroke-width="2"/>
+<circle cx="890" cy="279" r="3" fill="#64748b"/>
+<rect x="40" y="388" width="1080" height="48" rx="12" fill="#ecfdf5" stroke="#86efac"/>
+<text x="60" y="417" font-size="14" font-weight="700" fill="#166534">REPLAY CERTIFIED</text>
+<text x="215" y="417" font-size="13">run 940162686328743 · 172.780s · source fingerprint unchanged · row counts unchanged · replay attempts=1</text>
+</svg>
