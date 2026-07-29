@@ -1,0 +1,45 @@
+{
+  "dataset": {
+    "category": "Magazine_Subscriptions",
+    "metadata_bytes": 4096541,
+    "review_bytes": 33297013,
+    "source": "Amazon Reviews 2023"
+  },
+  "databricks_run": {
+    "assertions": {
+      "bronze_metadata_duplicate_ids": 0,
+      "bronze_reviews_duplicate_ids": 0,
+      "duplicate_interaction_ids": 0,
+      "flagged_interactions": 0,
+      "item_feature_leakage_rows": 0,
+      "manifest_replay_attempts": 1,
+      "quarantined_rows": 0,
+      "sequence_leakage_rows": 0
+    },
+    "duration_seconds": 189.554,
+    "job_id": 324020003477621,
+    "run_id": 813156246300863,
+    "status": "SUCCESS",
+    "tables": {
+      "bronze_product_metadata": 3391,
+      "bronze_reviews": 71497,
+      "gold_training_labels": 53897,
+      "silver_interactions": 70922
+    },
+    "workspace_tier": "Databricks Free Edition"
+  },
+  "long_tail_frontier": [
+    {"long_tail_exposure": 0.9410646388, "long_tail_weight": 0.0, "ndcg_at_10": 0.0263822698},
+    {"long_tail_exposure": 0.9479087452, "long_tail_weight": 0.1, "ndcg_at_10": 0.0256208508},
+    {"long_tail_exposure": 0.9593155894, "long_tail_weight": 0.25, "ndcg_at_10": 0.0237197102},
+    {"long_tail_exposure": 0.9756653992, "long_tail_weight": 0.5, "ndcg_at_10": 0.0218185695},
+    {"long_tail_exposure": 0.9809885932, "long_tail_weight": 1.0, "ndcg_at_10": 0.0214372610},
+    {"long_tail_exposure": 0.9893536122, "long_tail_weight": 2.0, "ndcg_at_10": 0.0195361203}
+  ],
+  "real_model_metrics": [
+    {"label": "Popularity", "ndcg_at_10": 0.0710684580, "zero_history_recall_at_10": 0.0},
+    {"label": "Content similarity", "ndcg_at_10": 0.0251716015, "zero_history_recall_at_10": 0.0450450450},
+    {"label": "Hybrid + ranker", "ndcg_at_10": 0.0263953253, "zero_history_recall_at_10": 0.0180180180},
+    {"label": "Full reranker", "ndcg_at_10": 0.0256208508, "zero_history_recall_at_10": 0.0180180180}
+  ]
+}

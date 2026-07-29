@@ -1,0 +1,16 @@
+tier: real-local
+seed: 20250308
+output_dir: artifacts/real-magazine
+domains: [Magazine_Subscriptions]
+model_user_limit: 400
+sequence_max_length: 100
+candidate_limit: 100
+recommendation_limit: 20
+validation_fraction: 0.20
+test_fraction: 0.20
+negative_count: 12
+rerank:
+  novelty_weight: 0.08
+  long_tail_weight: 0.12
+  redundancy_weight: 0.10
+  max_per_brand: 5

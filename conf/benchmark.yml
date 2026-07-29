@@ -1,0 +1,15 @@
+tier: benchmark
+seed: 20250308
+output_dir: /Volumes/marketplace_prod/landing/all_domains
+domains: [all]
+sequence_max_length: 100
+candidate_limit: 800
+recommendation_limit: 20
+validation_fraction: 0.05
+test_fraction: 0.05
+negative_count: 200
+rerank:
+  novelty_weight: 0.05
+  long_tail_weight: 0.10
+  redundancy_weight: 0.10
+  max_per_brand: 3

@@ -1,0 +1,114 @@
+bundle:
+  name: marketplace-recommender-lakehouse
+
+artifacts:
+  default:
+    type: whl
+    build: python3 -m pip wheel . -w dist
+    path: .
+
+variables:
+  catalog:
+    default: workspace
+  volume_root:
+    default: /Volumes/workspace/default/marketplace_landing
+  reviews_checksum:
+    default: bf36b04bbfb41f43c49b4adbdc13969014311ffb2344f706d13c35cdea5662da
+  metadata_checksum:
+    default: b325bc690a4b705338dfc3dd45ace5ec643dc6212cbb0c614a9b05f236ec12ab
+
+resources:
+  jobs:
+    marketplace_pipeline:
+      name: marketplace-recommender-${bundle.target}
+      max_concurrent_runs: 1
+      tasks:
+        - task_key: bootstrap
+          environment_key: default
+          spark_python_task:
+            python_file: ./scripts/databricks_entrypoint.py
+            parameters:
+              - --stage
+              - bootstrap
+              - --catalog
+              - ${var.catalog}
+              - --volume-root
+              - ${var.volume_root}
+              - --reviews-checksum
+              - ${var.reviews_checksum}
+              - --metadata-checksum
+              - ${var.metadata_checksum}
+        - task_key: bronze_reviews
+          depends_on:
+            - task_key: bootstrap
+          environment_key: default
+          spark_python_task:
+            python_file: ./scripts/databricks_entrypoint.py
+            parameters:
+              - --stage
+              - bronze
+              - --source-kind
+              - reviews
+              - --source-path
+              - ${var.volume_root}/reviews
+              - --catalog
+              - ${var.catalog}
+        - task_key: bronze_metadata
+          depends_on:
+            - task_key: bootstrap
+          environment_key: default
+          spark_python_task:
+            python_file: ./scripts/databricks_entrypoint.py
+            parameters:
+              - --stage
+              - bronze
+              - --source-kind
+              - metadata
+              - --source-path
+              - ${var.volume_root}/metadata
+              - --catalog
+              - ${var.catalog}
+        - task_key: silver
+          depends_on:
+            - task_key: bronze_reviews
+            - task_key: bronze_metadata
+          environment_key: default
+          spark_python_task:
+            python_file: ./scripts/databricks_entrypoint.py
+            parameters:
+              - --stage
+              - silver
+              - --catalog
+              - ${var.catalog}
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          environment_key: default
+          spark_python_task:
+            python_file: ./scripts/databricks_entrypoint.py
+            parameters:
+              - --stage
+              - gold
+              - --catalog
+              - ${var.catalog}
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ${workspace.artifact_path}/.internal/marketplace_recommender_lakehouse-0.1.0-py3-none-any.whl
+
+targets:
+  dev:
+    default: true
+    mode: development
+    variables:
+      catalog: workspace
+  staging:
+    mode: production
+    variables:
+      catalog: workspace
+  prod:
+    mode: production
+    variables:
+      catalog: workspace
