@@ -1,4 +1,4 @@
-.PHONY: assets demo real-demo lint test verify clean
+.PHONY: assets demo real-demo lint receipt test verify clean
 
 assets:
 	python3 scripts/generate_readme_assets.py
@@ -13,6 +13,10 @@ lint:
 	ruff check src scripts tests
 	ruff format --check src scripts tests
 
+receipt:
+	PYTHONPATH=src python3 -m marketplace_recommender.cli verify-receipt \
+		--root artifacts/local --receipt artifacts/local/monitoring/run_receipt.json
+
 test:
 	PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
 
@@ -22,6 +26,7 @@ verify:
 	$(MAKE) test
 	$(MAKE) demo
 	$(MAKE) demo
+	$(MAKE) receipt
 	PYTHONPATH=src python3 scripts/verify_local.py
 	$(MAKE) assets
 	git diff --exit-code -- assets

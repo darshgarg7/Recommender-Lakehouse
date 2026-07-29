@@ -14,3 +14,9 @@ rerank:
   long_tail_weight: 0.12
   redundancy_weight: 0.10
   max_per_brand: 5
+  max_score_regret: 0.05
+promotion:
+  max_relative_relevance_regression: 0.02
+  max_relative_retrieval_regression: 0.02
+  max_relative_cohort_regression: 0.02
+  required_cohorts: [zero-history, sparse]

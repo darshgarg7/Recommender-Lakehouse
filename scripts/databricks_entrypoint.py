@@ -6,19 +6,24 @@ from marketplace_recommender.pipelines.databricks import (
     bootstrap_ingestion_manifest,
     build_gold_tables,
     build_silver_tables,
+    certify_pipeline_run,
     ingest_bronze_stream,
 )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", choices=("bootstrap", "bronze", "silver", "gold"), required=True)
+    parser.add_argument(
+        "--stage", choices=("bootstrap", "bronze", "silver", "gold", "certify"), required=True
+    )
     parser.add_argument("--catalog", required=True)
     parser.add_argument("--volume-root")
     parser.add_argument("--reviews-checksum")
     parser.add_argument("--metadata-checksum")
     parser.add_argument("--source-kind", choices=("reviews", "metadata"))
     parser.add_argument("--source-path")
+    parser.add_argument("--job-run-id")
+    parser.add_argument("--job-id")
     args = parser.parse_args()
     from pyspark.sql import SparkSession
 
@@ -41,8 +46,12 @@ def main() -> None:
         ingest_bronze_stream(spark, args.catalog, args.source_kind, args.source_path)
     elif args.stage == "silver":
         build_silver_tables(spark, args.catalog)
-    else:
+    elif args.stage == "gold":
         build_gold_tables(spark, args.catalog)
+    else:
+        if not args.job_run_id or not args.job_id:
+            parser.error("certify requires --job-run-id and --job-id")
+        certify_pipeline_run(spark, args.catalog, args.job_run_id, args.job_id)
 
 
 if __name__ == "__main__":

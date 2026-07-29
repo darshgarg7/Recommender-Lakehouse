@@ -59,6 +59,7 @@ class PipelineConfig:
     test_fraction: float
     negative_count: int
     rerank: dict[str, Any]
+    promotion: dict[str, Any]
     model_user_limit: int | None = None
 
     @classmethod
@@ -77,6 +78,7 @@ class PipelineConfig:
             test_fraction=float(raw["test_fraction"]),
             negative_count=int(raw["negative_count"]),
             rerank=dict(raw["rerank"]),
+            promotion=dict(raw.get("promotion", {})),
             model_user_limit=(
                 int(raw["model_user_limit"]) if raw.get("model_user_limit") is not None else None
             ),

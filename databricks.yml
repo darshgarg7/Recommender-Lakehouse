@@ -91,6 +91,21 @@ resources:
               - gold
               - --catalog
               - ${var.catalog}
+        - task_key: certify
+          depends_on:
+            - task_key: gold
+          environment_key: default
+          spark_python_task:
+            python_file: ./scripts/databricks_entrypoint.py
+            parameters:
+              - --stage
+              - certify
+              - --catalog
+              - ${var.catalog}
+              - --job-run-id
+              - "{{job.run_id}}"
+              - --job-id
+              - "{{job.id}}"
       environments:
         - environment_key: default
           spec:

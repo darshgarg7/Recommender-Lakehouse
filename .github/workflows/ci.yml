@@ -32,5 +32,5 @@ jobs:
         if: matrix.python-version == '3.12'
         with:
           name: deterministic-run-evidence
-          path: artifacts/local/monitoring/local_run_summary.json
+          path: artifacts/local/
           if-no-files-found: error

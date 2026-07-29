@@ -10,9 +10,11 @@ from typing import Any
 from marketplace_recommender.config import PipelineConfig
 from marketplace_recommender.evaluation.bootstrap import bootstrap_mean_ci
 from marketplace_recommender.evaluation.cohort_metrics import marketplace_metrics
-from marketplace_recommender.evaluation.experiment import evaluate_rankings, promotion_decision
+from marketplace_recommender.evaluation.experiment import evaluate_rankings
 from marketplace_recommender.evaluation.ranking_metrics import ndcg_at_k
 from marketplace_recommender.evaluation.temporal_split import temporal_cutoffs
+from marketplace_recommender.governance.promotion import PromotionPolicy, promotion_decision
+from marketplace_recommender.governance.receipts import verify_run_receipt, write_run_receipt
 from marketplace_recommender.ingestion.manifest import ManifestStore
 from marketplace_recommender.ingestion.downloader import BoundedDownloader
 from marketplace_recommender.mlops import ExperimentLineage, code_revision
@@ -204,7 +206,10 @@ def run_demo(
     evaluation_report = {
         model: evaluate_rankings(rows, catalog) for model, rows in evaluations.items()
     }
-    promotion = promotion_decision(evaluation_report)
+    promotion = promotion_decision(
+        evaluation_report,
+        policy=PromotionPolicy.from_mapping(config.promotion),
+    )
     best_relevance_model = max(
         ("popularity", "content_similarity", "hybrid_ranker"),
         key=lambda name: evaluation_report[name]["ranking"]["ndcg_at_10"],
@@ -226,12 +231,14 @@ def run_demo(
     batch_timestamp = cutoffs.test_end + 1
     with metrics_log.timed("batch_inference"):
         for user_id in active_users:
-            _, recommendations = system.recommend(
+            recommendations = system.recommend_champion(
+                promotion["serving_champion"],
                 user_id,
                 batch_timestamp,
                 config.candidate_limit,
                 config.recommendation_limit,
                 config.rerank,
+                promotion["policy"]["policy_id"],
             )
             batch_metric_rows.extend(recommendations)
             batch_rows.extend(serving_projection(row) for row in recommendations)
@@ -286,8 +293,10 @@ def run_demo(
     )
     write_jsonl_atomic(gold / "gold_evaluation_candidates.jsonl", evaluation_candidates)
     write_jsonl_atomic(serving / "gold_batch_recommendations.jsonl", batch_rows)
+    revision = code_revision()
+    source_versions = {row["source_kind"]: row["checksum"] for row in manifest.all()}
     lineage = ExperimentLineage(
-        source_versions={row["source_kind"]: row["checksum"] for row in manifest.all()},
+        source_versions=source_versions,
         training_cutoff=cutoffs.training_end,
         validation_cutoff=cutoffs.validation_end,
         test_cutoff=cutoffs.test_end,
@@ -301,32 +310,81 @@ def run_demo(
             f"top-{config.negative_count}-retrieved-hard-negatives-with-future-positive-exclusion"
         ),
         seed=config.seed,
-        code_revision=code_revision(),
+        code_revision=revision,
         compute_configuration="single-process dependency-free local",
         estimated_cost="$0 incremental cloud cost",
     )
+    lineage_path = output / "ml" / "local-hybrid-v1.json"
     lineage.write(
-        output / "ml" / "local-hybrid-v1.json",
+        lineage_path,
         {
             "ranker_weights": system.ranker.weights,
             "distillation_scale": system.tower.distiller.scale,
             "embedding_dimension": len(next(iter(system.generator.ann.vectors.values()))),
+            "candidate_promoted": promotion["promoted"],
+            "serving_champion": promotion["serving_champion"],
+            "promotion_policy_id": promotion["policy"]["policy_id"],
         },
     )
     monitoring.mkdir(parents=True, exist_ok=True)
+    frontier_path = monitoring / "relevance_long_tail_frontier.json"
+    frontier_path.write_text(
+        json.dumps(frontier, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    verified_claims = {
+        "input_interactions": len(etl_interactions),
+        "input_products": len(products),
+        "model_scope_interactions": len(interactions),
+        "model_training_interactions": sum(
+            row["review_timestamp"] < cutoffs.training_end for row in interactions
+        ),
+        "ranker_training_rows": ranker_rows,
+        "batch_recommendation_rows": len(batch_rows),
+        "serving_champion": promotion["serving_champion"],
+    }
+    fingerprints = {
+        "silver_interactions": records_fingerprint(etl_interactions),
+        "gold_training_examples": records_fingerprint(
+            read_jsonl(gold / "gold_training_examples.jsonl")
+        ),
+    }
+    receipt_path = monitoring / "run_receipt.json"
+    receipt = write_run_receipt(
+        receipt_path,
+        run_root=output,
+        identity={
+            "tier": config.tier,
+            "data_source": data_source,
+            "model_version": "local-hybrid-v1",
+            "seed": config.seed,
+            "code_revision": revision,
+            "config_sha256": file_checksum(Path(config_path)),
+        },
+        source_contract=source_versions,
+        temporal_contract={
+            "training_end": cutoffs.training_end,
+            "validation_end": cutoffs.validation_end,
+            "test_end": cutoffs.test_end,
+            "batch_feature_timestamp": batch_timestamp,
+            "historical_join_predicate": "event_timestamp < label_timestamp",
+        },
+        decision_contract=promotion,
+        verified_claims={**verified_claims, "fingerprints": fingerprints},
+        artifacts={
+            "silver_interactions": silver / "silver_interactions.jsonl",
+            "gold_training_examples": gold / "gold_training_examples.jsonl",
+            "gold_item_embeddings": gold / "gold_item_embeddings.jsonl",
+            "gold_evaluation_candidates": gold / "gold_evaluation_candidates.jsonl",
+            "batch_recommendations": serving / "gold_batch_recommendations.jsonl",
+            "model_lineage": lineage_path,
+            "marketplace_frontier": frontier_path,
+        },
+    )
+    receipt_verification = verify_run_receipt(receipt_path, output)
     summary = {
         "tier": config.tier,
         "data_source": data_source,
-        "verified_claims": {
-            "input_interactions": len(etl_interactions),
-            "input_products": len(products),
-            "model_scope_interactions": len(interactions),
-            "model_training_interactions": sum(
-                row["review_timestamp"] < cutoffs.training_end for row in interactions
-            ),
-            "ranker_training_rows": ranker_rows,
-            "batch_recommendation_rows": len(batch_rows),
-        },
+        "verified_claims": verified_claims,
         "cutoffs": {
             "training_end": cutoffs.training_end,
             "validation_end": cutoffs.validation_end,
@@ -353,11 +411,11 @@ def run_demo(
         "batch_marketplace_metrics": marketplace_metrics(batch_metric_rows, catalog),
         "relevance_long_tail_frontier": frontier,
         "runtime": metrics_log.values,
-        "fingerprints": {
-            "silver_interactions": records_fingerprint(etl_interactions),
-            "gold_training_examples": records_fingerprint(
-                read_jsonl(gold / "gold_training_examples.jsonl")
-            ),
+        "fingerprints": fingerprints,
+        "run_receipt": {
+            "path": receipt_path.relative_to(output).as_posix(),
+            "payload_sha256": receipt["payload_sha256"],
+            "verified_artifact_count": len(receipt_verification["verified_artifacts"]),
         },
         "limitations": [
             (
@@ -371,9 +429,6 @@ def run_demo(
     }
     (monitoring / "local_run_summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    (monitoring / "relevance_long_tail_frontier.json").write_text(
-        json.dumps(frontier, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return summary
@@ -421,6 +476,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     real.add_argument("--config", default="conf/real_local.yml")
     real.add_argument("--category", default="Magazine_Subscriptions")
+    verify = commands.add_parser(
+        "verify-receipt", help="verify a tamper-evident run receipt and all bound artifacts"
+    )
+    verify.add_argument("--root", default="artifacts/local")
+    verify.add_argument("--receipt", default="artifacts/local/monitoring/run_receipt.json")
     return parser
 
 
@@ -430,6 +490,8 @@ def main() -> None:
         run_demo(args.config)
     elif args.command == "real-demo":
         run_real_integration(args.config, args.category)
+    elif args.command == "verify-receipt":
+        print(json.dumps(verify_run_receipt(args.receipt, args.root), indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

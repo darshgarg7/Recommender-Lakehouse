@@ -22,6 +22,17 @@ class DatabricksBundleContractTests(unittest.TestCase):
         self.assertFalse(is_sha256("g" * 64))
         self.assertFalse(is_sha256("a" * 63))
 
+    def test_bundle_ends_in_a_run_bound_certification_task(self):
+        bundle = (ROOT / "databricks.yml").read_text(encoding="utf-8")
+        entrypoint = (ROOT / "scripts/databricks_entrypoint.py").read_text(encoding="utf-8")
+        pipeline = (ROOT / "src/marketplace_recommender/pipelines/databricks.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("task_key: certify", bundle)
+        self.assertIn('"{{job.run_id}}"', bundle)
+        self.assertIn("certify_pipeline_run", entrypoint)
+        self.assertIn("pipeline_run_certifications", pipeline)
+
 
 if __name__ == "__main__":
     unittest.main()

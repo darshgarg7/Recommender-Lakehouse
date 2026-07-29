@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -24,6 +25,7 @@ rerank:
   long_tail_weight: 0.12
   redundancy_weight: 0.10
   max_per_brand: 5
+  max_score_regret: 0.05
 """
 
 
@@ -37,9 +39,20 @@ class VerticalSliceTests(unittest.TestCase):
                 first = run_demo(config)
                 second = run_demo(config)
             self.assertEqual(first["fingerprints"], second["fingerprints"])
+            self.assertEqual(
+                first["run_receipt"]["payload_sha256"],
+                second["run_receipt"]["payload_sha256"],
+            )
             self.assertGreater(second["bronze"]["replayed_files"], 0)
             output = root / "output" / "serving" / "gold_batch_recommendations.jsonl"
             self.assertTrue(output.exists())
+            rows = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+            champion = second["promotion_decision"]["serving_champion"]
+            self.assertTrue(rows)
+            self.assertTrue(all(row["serving_champion"] == champion for row in rows))
+            self.assertTrue(all(len(row["promotion_policy_id"]) == 64 for row in rows))
+            self.assertTrue(all(row["representation_strategy"] for row in rows))
+            self.assertTrue((root / "output/monitoring/run_receipt.json").exists())
             self.assertTrue((root / "output/ml/local-hybrid-v1.json").exists())
             self.assertGreater(second["verified_claims"]["batch_recommendation_rows"], 0)
 

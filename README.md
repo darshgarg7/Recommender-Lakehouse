@@ -1,14 +1,15 @@
 # Marketplace Cold-Start Recommender Lakehouse
 
-> A replay-safe Databricks lakehouse and multi-stage recommender for products that do not yet have
-> enough behavioral history to compete with established inventory.
+> A time-correct, evidence-conditioned recommendation system for products that must earn exposure
+> before they have enough behavior to train on.
 
 New products face a feedback loop: no interactions means weak collaborative representations; weak
 representations mean little exposure; little exposure means no interactions. This project attacks
 both sides of that loop:
 
 1. Build historically correct, replayable marketplace data in Bronze, Silver, and Gold.
-2. Blend content and collaborative signals so zero- and sparse-history products can be retrieved.
+2. Progressively specialize item representations as legitimate evidence becomes available.
+3. Carry the evaluation policy and evidence chain all the way into serving—not just into a report.
 
 This is an evidence-first portfolio project. It has processed real
 [Amazon Reviews 2023](https://amazon-reviews-2023.github.io/) data in a live Databricks workspace,
@@ -19,17 +20,18 @@ revenue, latency, or causal lift.
 
 | Evidence | Verified result |
 |---|---:|
-| Live Databricks job | 5 serverless tasks, full run and full replay succeeded |
+| Live Databricks job | 6 serverless tasks; replay and fail-closed certification succeeded |
 | Real landed input | 71,497 reviews + 3,391 product records |
 | Canonical Silver output | 70,922 interactions + 3,391 parent products |
 | Leakage-safe Gold output | 53,897 labels, sequences, and item snapshots |
 | Real local model scope | 1,683 interactions from 400 repeat users |
 | Real evaluation set | 263 positive test examples |
-| Automated tests | 17 passing |
+| Automated tests | 30 passing |
 | Replay assertions | 0 duplicate Bronze/Silver IDs after a counted full replay |
 
-The final live replay was Databricks run `813156246300863`. It completed all five tasks in 189.6
-seconds, incremented both manifest replay counters to one, and preserved every business row count.
+The final live replay was Databricks run `144998663962696`. It completed all six tasks in 208.5
+seconds, incremented both manifest replay counters to two, preserved every business row count, and
+persisted a passing eleven-assertion certificate.
 
 ![Verified Databricks pipeline evidence](assets/databricks-pipeline-evidence.svg)
 
@@ -39,13 +41,16 @@ seconds, incremented both manifest replay counters to one, and preserved every b
 |---|---|---|
 | Deterministic local Bronze-to-batch slice | **Verified** | `make demo`; integration and replay tests |
 | Real Amazon Reviews ingestion | **Verified** | Magazine Subscriptions review and metadata objects |
-| Live Databricks Bronze/Silver/Gold | **Verified** | Serverless bundle runs `493542142269229` and `813156246300863` |
+| Live Databricks Bronze/Silver/Gold | **Verified** | Serverless bundle runs `813156246300863` and `144998663962696` |
 | SHA-256 manifest gate | **Verified** | Databricks bootstrap recomputes both landed hashes before commit |
 | Auto Loader replay | **Verified** | Full replay kept Bronze and Silver counts unchanged |
 | Point-in-time features | **Verified** | Unit tests plus live SQL leakage assertions |
 | Local content/collaborative hybrid | **Verified locally** | Deterministic exact-index evaluation |
 | Pairwise learned ranking and reranking | **Verified locally** | Real and synthetic evaluation artifacts |
-| Promotion-aware champion fallback | **Verified locally** | Relevance + zero-history guardrails select the strongest safe model |
+| Evidence-conditioned representation routing | **Verified locally** | Each serving row declares its legal signals and representation path |
+| Policy-enforced champion serving | **Verified locally** | Aggregate, retrieval, and protected-cohort guardrails fail closed |
+| Tamper-evident run receipts | **Verified locally** | Independent CLI verifies seven content-bound artifacts |
+| Databricks pipeline certification | **Verified live** | Run `144998663962696`: 11/11 assertions passed and persisted in Delta |
 | XGBoost LambdaMART adapter | Implemented, **not used in reported runs** | Optional `ml` dependency |
 | MLflow logging adapter | Implemented, **not used in reported runs** | Optional Databricks dependency |
 | Spark ALS, real SASRec, transformer embeddings | **Not trained** | Integration roadmap |
@@ -70,6 +75,7 @@ The same two files used by the real local run were landed in the managed Unity C
 | `workspace.gold.gold_training_labels` | 53,897 |
 | `workspace.gold.gold_user_sequences_asof` | 53,897 |
 | `workspace.gold.gold_item_statistics_asof` | 53,897 |
+| `workspace.monitoring.pipeline_run_certifications` | 1 |
 
 Post-replay SQL assertions:
 
@@ -83,10 +89,14 @@ Post-replay SQL assertions:
 | Item feature timestamp `>=` label timestamp | 0 |
 | User-history event timestamp `>=` label timestamp | 0 |
 
-Both manifest objects report `replay_attempts = 1`, proving this was a counted replay rather than a
-fresh first pass. The migration also backfilled deterministic `bronze_record_id` values into the
-existing Delta tables before the streams ran, so deleting a checkpoint cannot silently append the
-same raw records again.
+Both manifest objects report `replay_attempts = 2`, proving this was another counted replay rather
+than a fresh first pass. The migration also backfilled deterministic `bronze_record_id` values into
+the existing Delta tables before the streams ran, so deleting a checkpoint cannot silently append
+the same raw records again.
+
+The final task persisted `lakehouse-certification/v1` with `passed = true`, all eleven checks green,
+and no failed check names. Its source-set digest is `583f28aa…98e5`; its materialized table-state
+digest is `9a65c062…5fc5`. These are evidence identifiers, not security signatures.
 
 ### Real-data recommendation quality
 
@@ -105,7 +115,10 @@ training cutoff, 884 candidate rows trained the ranker, and 263 positives were e
 
 Popularity is the strongest relevance baseline on this small real scope. The full system is 63.9%
 below it on aggregate NDCG@10, and the user-level bootstrap interval for the delta is entirely
-negative. The model therefore fails the promotion gate. That result is reported, not hidden.
+negative. Policy `d3fd0d03…c11d` passed retrieval coverage and zero-history Recall@10, but failed
+aggregate NDCG@10 and sparse-cohort Recall@10. The model therefore fails closed, and the 8,000-row
+real batch artifact is generated by popularity. Every row carries `serving_champion = popularity`
+and the full promotion-policy ID. The underperforming candidate is evaluated, not quietly served.
 
 Increasing the long-tail weight raised Top-10 long-tail exposure from 94.1% to 98.9%, while
 NDCG@10 fell from 0.0264 to 0.0195. The experiment demonstrates the intended control surface, but
@@ -116,7 +129,9 @@ not a relevance-preserving win.
 ### Deterministic smoke result
 
 The synthetic slice exists to exercise contracts and failure semantics, not to establish model
-quality. It contains 240 interactions and 24 products, with 32 positive test examples.
+quality. It contains 240 interactions and 24 products, with 32 positive test examples. Its learned
+candidate also fails the declared aggregate and sparse guardrails, so batch serving routes to the
+content-similarity champion.
 
 | Model | NDCG@10 | Recall@10 | Zero-history Recall@10 |
 |---|---:|---:|---:|
@@ -131,32 +146,77 @@ quality. It contains 240 interactions and 24 products, with 32 positive test exa
 |---|---|---:|---:|---:|
 | Synthetic local | 240 interactions | 144 interactions | Sub-second core stages | $0 incremental |
 | Real local | 33.3 MB reviews + 4.1 MB metadata; 70,922 interactions | 1,009 interactions | 31.8 s measured stages | $0 incremental |
-| Databricks replay | 71,497 reviews + 3,391 metadata rows | ETL only | 189.6 s job runtime | Not measured; Free Edition |
+| Databricks certified replay | 71,497 reviews + 3,391 metadata rows | ETL + 11 assertions | 208.5 s job runtime | Not measured; Free Edition |
 | Electronics integration | Not run | Not run | Not measured | Not measured |
 | Full Amazon corpus | Not run | Not run | Not measured | Not measured |
 
 ## Architecture
 
+### Thesis: time, evidence, and decisions are data
+
+Most recommender diagrams end at a score. This design treats three additional objects as
+first-class:
+
+- **Knowledge time:** every feature states what was knowable before the decision timestamp.
+- **Evidence capability:** an item can use only the content, behavior, graph, or popularity evidence
+  it actually has; its representation progressively specializes as that evidence grows.
+- **Decision provenance:** a serving row names the policy, champion, representation path, reason,
+  and relevance-regret budget that produced it.
+
+That creates two connected planes. The execution plane produces recommendations; the evidence plane
+decides whether those recommendations are eligible to exist and makes the result independently
+verifiable.
+
 ```mermaid
-flowchart LR
-    A["Amazon Reviews 2023 JSONL"] --> L["Unity Catalog volume"]
-    L --> M["SHA-256 manifest gate"]
-    M --> B["Bronze<br/>raw payload + provenance"]
-    B --> S["Silver<br/>parent products + interactions"]
-    S --> G["Gold<br/>strict as-of state + labels"]
-    G --> C["Content encoder"]
-    G --> T["Sequential collaborative teacher"]
-    C --> D["Content-to-collaborative distillation"]
-    T --> H["History-aware cold-start gate"]
-    D --> H
-    H --> R["Multi-channel candidate retrieval"]
-    R --> K["Learned ranker"]
-    K --> V["Diversity + long-tail reranker"]
-    V --> O["Batch Top-K recommendations"]
+flowchart TB
+    subgraph X["Execution plane"]
+        A["Amazon Reviews 2023"] --> M["SHA-256 manifest gate"]
+        M --> B["Bronze · immutable evidence"]
+        B --> S["Silver · canonical entities"]
+        S --> G["Gold · strict as-of state"]
+        G --> C["Content representation"]
+        G --> T["Collaborative teacher"]
+        C --> H["Evidence-capability router"]
+        T --> H
+        H --> R["Multi-channel retrieval"]
+        R --> K["Learned relevance ranker"]
+        K --> V["Regret-bounded marketplace policy"]
+    end
+    subgraph E["Evidence and control plane"]
+        Q["Identical temporal evaluation"] --> P["Content-addressed promotion policy"]
+        P --> CH["Serving champion"]
+        CH --> D["Decision-carrying rows"]
+        D --> RC["Tamper-evident run receipt"]
+        CF["Databricks certification task"] --> CT["Delta certification ledger"]
+    end
+    G --> Q
+    V --> Q
+    CH --> V
+    V --> D
+    B -. "counts + uniqueness" .-> CF
+    S -. "quality" .-> CF
+    G -. "leakage" .-> CF
 ```
 
-The lakehouse and recommender are one system. Gold is responsible for reconstructing what was
-knowable at each label timestamp; the model is not allowed to repair leakage after the fact.
+Gold reconstructs what was knowable at each label timestamp; the model is not allowed to repair
+leakage after the fact. Evaluation does not merely recommend a champion: batch serving consumes that
+exact decision. The resulting artifacts are content-bound into a receipt, while Databricks writes a
+separate certification for the materialized table state.
+
+### Abstraction without theater
+
+| Boundary | Dependency-free executable oracle | Production replacement |
+|---|---|---|
+| Retrieval | Exact vector index | Vector Search or another ANN index, recall-tested against exact |
+| Collaboration | Deterministic sequential co-occurrence teacher | ALS or a trained sequential model |
+| Content | Signed feature hashing | Versioned transformer or multimodal encoder |
+| Ranking | Pairwise linear ranker | LambdaMART or another group-aware learner |
+| Policy | Content-addressed Python contract | Registered policy artifact and model alias transition |
+| Evidence | SHA-256 run receipt | Signed attestation backed by immutable artifact storage |
+
+The local implementations are validation oracles, not toy names for unimplemented services. Each
+replacement has a stable input/output contract and a concrete comparison test before it can take
+over.
 
 ### Key design decisions
 
@@ -167,7 +227,10 @@ knowable at each label timestamp; the model is not allowed to repair leakage aft
 | Gate every landed object by SHA-256 | Makes partial downloads and silent source changes fail closed |
 | Blend content and collaboration by history count | Gives zero-history products a representation without discarding warm-item behavior |
 | Compare against popularity and content on identical splits | Prevents a sophisticated architecture from hiding behind weak baselines |
-| Fall back when promotion guardrails fail | Separates an experimental candidate from the model safe enough to serve |
+| Content-address the promotion policy | A threshold change creates a new policy identity instead of silently changing deployment semantics |
+| Route the selected champion into batch serving | Prevents evaluation and production from disagreeing about which model won |
+| Bound marketplace objectives by score regret | Long-tail exposure cannot buy arbitrary relevance loss |
+| Emit a tamper-evident receipt | Binds source hashes, time cutoffs, policy, claims, and output bytes into one verifiable object |
 
 ## Lakehouse contracts
 
@@ -177,7 +240,8 @@ knowable at each label timestamp; the model is not allowed to repair leakage aft
 | Bronze | reviews, metadata, manifest, quarantine | Deterministic record ID, raw payload, checksum, row number, rescue data |
 | Silver | parent products, variants, interactions | Stable keys, typed fields, deduplication, quality status |
 | Gold | labels, sequences, item statistics | Every behavioral input is strictly earlier than its label time |
-| Serving | batch recommendations | One row per user, rank, generation time, and model version |
+| Serving | batch recommendations | Champion, policy, evidence capabilities, decision reason, and score regret travel with every row |
+| Monitoring | run certifications and receipts | A failed invariant fails the run; a changed artifact invalidates its receipt |
 
 The recommendation unit is `parent_asin`; child `asin` remains available for lineage. An
 `interaction_id` is a deterministic SHA-256 fingerprint of user, child ASIN, timestamp, and rating.
@@ -218,6 +282,10 @@ not a claim about confirmed product launch time.
 | New source field | Data lands in rescued payload until the contract changes | Implemented Auto Loader rescue path |
 | Invalid key/rating/time | Row fails the Silver contract | Contract tests and quality output |
 | Lost Gold output | Rebuild from Silver and the recorded cutoff | Designed path; live repair drill remains |
+| Candidate model underperforms | Serving routes to the strongest baseline | Executable promotion and integration tests |
+| Missing protected-cohort metric | Promotion fails closed | Policy contract test |
+| Receipt or bound artifact is edited | Independent verification fails | Payload and artifact tampering tests |
+| Lakehouse invariant breaks | Final Databricks task records failure and fails the job | Certification task |
 
 ## Recommender design
 
@@ -226,13 +294,19 @@ The checked local system is intentionally dependency-light:
 1. A signed feature-hash encoder represents title, description, categories, brand, and attributes.
 2. A sequential co-interaction teacher provides a deterministic collaborative signal.
 3. A diagonal distiller maps content vectors toward collaborative vectors for warm products.
-4. A count-aware gate assigns zero collaborative weight to zero-history items.
-5. Exact vector search validates retrieval behavior without pretending to be production ANN.
-6. Hybrid, co-interaction, bought-together, and trend channels produce candidates.
-7. A pairwise linear ranker scores candidates.
-8. A constrained reranker trades relevance against novelty, long-tail exposure, and redundancy.
-9. An executable promotion gate chooses the candidate only if relevance and zero-history checks
-   pass; otherwise it records the strongest baseline as the serving champion.
+4. An evidence-capability resolver selects `content_cold_start`, `distilled_sparse_hybrid`,
+   `warm_hybrid`, `collaborative_only`, `graph_seeded_fallback`, or `catalog_fallback` without
+   inventing missing signals.
+5. A count-aware gate assigns exactly zero collaborative weight to zero-history items.
+6. Exact vector search validates retrieval behavior without pretending to be production ANN.
+7. Hybrid, co-interaction, bought-together, and trend channels produce candidates with provenance.
+8. A pairwise linear ranker scores candidates.
+9. A constrained reranker may improve novelty, long-tail exposure, and redundancy only inside a
+   normalized learned-score regret budget.
+10. A content-addressed promotion policy checks aggregate NDCG, retrieval coverage, zero-history
+    Recall@10, and sparse Recall@10. Missing metrics fail closed.
+11. Batch serving executes the chosen champion and emits the policy and representation explanation.
+12. A run receipt binds source versions, temporal cutoffs, policy, claims, and seven artifact hashes.
 
 Spark ALS, a real SASRec implementation, transformer content encoders, LambdaMART training,
 Databricks Vector Search, and online load testing are deliberately separate integration milestones.
@@ -268,15 +342,26 @@ make verify
 ```
 
 That command checks lint and formatting, compiles the package, runs all tests, executes the demo
-twice, asserts replay and promotion behavior, verifies serving/lineage artifacts, regenerates and
-diff-checks the README evidence, and builds the wheel.
+twice, proves replay stability, verifies that serving used the selected champion, independently
+checks the run receipt and its seven artifacts, diff-checks the README evidence, and builds the
+wheel.
+
+To verify a run without trusting the process that created it:
+
+```bash
+make receipt
+# or point the CLI at any run root:
+marketplace-recommender verify-receipt --root <run-root> --receipt <receipt.json>
+```
 
 Important generated evidence:
 
 ```text
 artifacts/local/monitoring/local_run_summary.json
+artifacts/local/monitoring/run_receipt.json
 artifacts/local/serving/gold_batch_recommendations.jsonl
 artifacts/real-magazine/monitoring/local_run_summary.json
+artifacts/real-magazine/monitoring/run_receipt.json
 artifacts/real-magazine/monitoring/relevance_long_tail_frontier.json
 artifacts/real-magazine/serving/gold_batch_recommendations.jsonl
 ```
@@ -314,8 +399,13 @@ The deployed graph is:
 ```text
 bootstrap checksum verification
         ├── bronze_reviews ──┐
-        └── bronze_metadata ─┴── silver ── gold
+        └── bronze_metadata ─┴── silver ── gold ── certify
 ```
+
+`certify` evaluates eleven invariants inside Spark, hashes the source set and table state, and
+upserts the result by Databricks run ID into
+`workspace.monitoring.pipeline_run_certifications`. Any failed invariant is persisted and then
+raises an error, so a green DAG is itself evidence—not merely evidence that tasks returned zero.
 
 For a paid workspace, `infrastructure/terraform/` contains the starting point for separate
 environment catalogs. Cloud storage credentials, grants, compute policies, and network controls
@@ -325,7 +415,7 @@ remain operator responsibilities.
 
 ```text
 .
-├── databricks.yml          # Serverless five-task deployment bundle
+├── databricks.yml          # Serverless six-task deployment bundle
 ├── conf/                   # Local, real-local, integration, and benchmark profiles
 ├── infrastructure/        # Unity Catalog Terraform starting point
 ├── scripts/                # Databricks stage entrypoint
@@ -336,6 +426,7 @@ remain operator responsibilities.
 │   ├── retrieval/          # Baselines, distillation, hybrid vectors, exact ANN
 │   ├── ranking/            # Candidate features, pairwise/LambdaMART rankers, reranker
 │   ├── evaluation/         # Temporal splits, cohorts, metrics, bootstrap intervals
+│   ├── governance/         # Promotion policy and tamper-evident run receipts
 │   ├── serving/            # Batch contract and optional FastAPI surface
 │   └── monitoring/         # Run summaries and quality metrics
 ├── tests/                  # Unit, contract, integration, leakage, failure injection
@@ -358,12 +449,17 @@ The suite currently covers:
 - Strict as-of joins and future-history rejection.
 - Future-positive-safe negative sampling.
 - Zero-history gate boundaries.
+- Evidence-capability transitions and catalog fallbacks.
 - Replay-safe deterministic storage.
 - Corrupt-row quarantine without dropping valid rows.
-- End-to-end Bronze-to-batch serving materialization.
+- Fail-closed promotion with aggregate, retrieval, and protected-cohort guardrails.
+- Marketplace-objective ordering at the exact relevance-regret boundary.
+- Payload and artifact tampering detection.
+- End-to-end Bronze-to-selected-champion serving materialization.
 
-The GitHub Actions workflow runs `make verify` on Python 3.11, 3.12, and 3.13 and uploads the
-deterministic run summary from Python 3.12 as CI evidence.
+The GitHub Actions workflow runs `make verify` on Python 3.11, 3.12, and 3.13. Python 3.12 uploads
+the complete deterministic run root, so the receipt and all seven bound artifacts remain
+independently verifiable after CI.
 
 ## Remaining work before a production claim
 
@@ -378,9 +474,9 @@ In priority order:
 7. Load-test batch and optional online serving; report P50/P95/P99 and failure behavior.
 8. Audit exposure by brand, category, history cohort, and popularity before any marketplace claim.
 
-Promotion requires replay and leakage checks, a statistically supported improvement over a declared
-baseline, no unacceptable warm-item regression, reproducible table/model versions, and serving
-smoke tests. The current real hybrid does not pass that gate.
+Promotion requires replay and leakage checks, non-inferior relevance and retrieval, protected-cohort
+guardrails, reproducible table/model versions, and serving smoke tests. The current real hybrid does
+not pass that gate.
 
 ## Intended use and limitations
 

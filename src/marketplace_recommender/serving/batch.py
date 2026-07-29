@@ -10,6 +10,7 @@ from marketplace_recommender.ranking.lambdamart import PairwiseLinearRanker
 from marketplace_recommender.ranking.reranker import rerank
 from marketplace_recommender.retrieval.ann import ExactANNIndex
 from marketplace_recommender.retrieval.candidates import CandidateGenerator
+from marketplace_recommender.retrieval.capabilities import resolve_capabilities
 from marketplace_recommender.retrieval.content import (
     build_content_embeddings,
     content_candidates,
@@ -18,6 +19,7 @@ from marketplace_recommender.retrieval.content import (
 from marketplace_recommender.retrieval.popularity import popularity_scores, recommend_popular
 from marketplace_recommender.retrieval.sasrec import SequentialCooccurrenceTeacher
 from marketplace_recommender.retrieval.two_tower import HybridTwoTower
+from marketplace_recommender.retrieval.vectors import dot
 from marketplace_recommender.schemas import cold_start_bucket
 
 
@@ -106,11 +108,19 @@ class RecommendationSystem:
         candidates = self.generator.generate(history, candidate_limit, domain)
         output = []
         for candidate in candidates:
-            product = self.products[candidate["parent_asin"]]
+            item = candidate["parent_asin"]
+            product = self.products[item]
             features = candidate_features(
                 candidate, history, self.tower, product, preferences, self.generator.popularity
             )
-            output.append({**candidate, **product, "features": features})
+            capabilities = resolve_capabilities(
+                content_available=self.tower.has_content.get(item, False),
+                behavioral_events=self.tower.interaction_counts.get(item, 0),
+                observed_retrieval_channels=tuple(candidate.get("retrieval_scores", {})),
+            )
+            output.append(
+                {**candidate, **product, **capabilities.as_record(), "features": features}
+            )
         return output
 
     def fit_ranker(
@@ -175,9 +185,10 @@ class RecommendationSystem:
             item = candidate["parent_asin"]
             candidate["ranking_score"] = self.ranker.predict(candidate["features"])
             candidate["novelty"] = candidate["features"]["novelty"]
-            candidate["cold_start_bucket"] = cold_start_bucket(
-                self.tower.interaction_counts.get(item, 0)
-            )
+            evidence_count = self.tower.interaction_counts.get(item, 0)
+            candidate["behavioral_evidence_count"] = evidence_count
+            candidate["collaboration_weight"] = candidate["features"]["cold_start_gate"]
+            candidate["cold_start_bucket"] = cold_start_bucket(evidence_count)
         relevance_order = sorted(
             candidates, key=lambda row: (-row["ranking_score"], row["parent_asin"])
         )
@@ -189,6 +200,7 @@ class RecommendationSystem:
             long_tail_weight=float(rerank_config["long_tail_weight"]),
             redundancy_weight=float(rerank_config["redundancy_weight"]),
             max_per_brand=int(rerank_config["max_per_brand"]),
+            max_score_regret=float(rerank_config["max_score_regret"]),
         )
         generated_at = datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc).isoformat()
         for row in final:
@@ -197,6 +209,85 @@ class RecommendationSystem:
             row["feature_timestamp"] = timestamp
             row["generated_at"] = generated_at
         return relevance_order, final
+
+    def recommend_champion(
+        self,
+        champion: str,
+        user_id: str,
+        timestamp: int,
+        candidate_limit: int,
+        limit: int,
+        rerank_config: dict[str, Any],
+        promotion_policy_id: str,
+    ) -> list[dict[str, Any]]:
+        """Generate batch rows from the model selected by the promotion decision."""
+        generated_at = datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc).isoformat()
+        if champion in {"full_reranked", "hybrid_ranker"}:
+            relevance, reranked = self.recommend(
+                user_id,
+                timestamp,
+                candidate_limit,
+                limit,
+                rerank_config,
+                model_version=f"local-{champion}-v1",
+            )
+            rows = reranked if champion == "full_reranked" else relevance[:limit]
+            for rank, row in enumerate(rows, start=1):
+                row["rank"] = rank
+                row.setdefault("final_score", row["ranking_score"])
+                row.setdefault("score_regret", 0.0)
+                row.setdefault("max_score_regret", 0.0)
+                row.setdefault("decision_reason", "promoted_learned_relevance")
+        elif champion in {"popularity", "content_similarity"}:
+            history = self.history(user_id, timestamp)
+            ranked = self.baseline_rankings(user_id, timestamp, limit)[champion]
+            profile = user_content_profile(history, self.content_embeddings)
+            rows = []
+            for rank, item in enumerate(ranked, start=1):
+                score = (
+                    self.generator.popularity.get(item, 0.0)
+                    if champion == "popularity"
+                    else dot(profile, self.content_embeddings[item])
+                )
+                evidence_count = self.tower.interaction_counts.get(item, 0)
+                capabilities = resolve_capabilities(
+                    content_available=self.tower.has_content.get(item, False),
+                    behavioral_events=evidence_count,
+                    observed_retrieval_channels=(champion,),
+                )
+                rows.append(
+                    {
+                        **self.products[item],
+                        **capabilities.as_record(),
+                        "parent_asin": item,
+                        "rank": rank,
+                        "retrieval_score": score,
+                        "ranking_score": score,
+                        "final_score": score,
+                        "recommendation_channel": champion,
+                        "cold_start_bucket": cold_start_bucket(evidence_count),
+                        "behavioral_evidence_count": evidence_count,
+                        "collaboration_weight": (
+                            0.0
+                            if champion == "content_similarity"
+                            else self.tower.interaction_counts.get(item, 0)
+                            / (self.tower.interaction_counts.get(item, 0) + 10.0)
+                        ),
+                        "score_regret": 0.0,
+                        "max_score_regret": 0.0,
+                        "decision_reason": "promotion_fallback",
+                    }
+                )
+        else:
+            raise ValueError(f"unsupported serving champion: {champion}")
+        for row in rows:
+            row["user_id"] = user_id
+            row["model_version"] = f"local-{champion}-v1"
+            row["serving_champion"] = champion
+            row["promotion_policy_id"] = promotion_policy_id
+            row["feature_timestamp"] = timestamp
+            row["generated_at"] = generated_at
+        return rows
 
     def baseline_rankings(self, user_id: str, timestamp: int, limit: int) -> dict[str, list[str]]:
         history = self.history(user_id, timestamp)
@@ -220,6 +311,17 @@ def serving_projection(row: dict[str, Any]) -> dict[str, Any]:
         "final_score",
         "recommendation_channel",
         "cold_start_bucket",
+        "behavioral_evidence_count",
+        "collaboration_weight",
+        "content_available",
+        "observed_retrieval_channels",
+        "representation_strategy",
+        "evidence_capabilities",
+        "serving_champion",
+        "promotion_policy_id",
+        "decision_reason",
+        "score_regret",
+        "max_score_regret",
         "model_version",
         "feature_timestamp",
         "generated_at",

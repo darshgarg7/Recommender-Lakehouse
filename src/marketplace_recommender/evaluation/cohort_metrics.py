@@ -30,4 +30,7 @@ def metrics_by_cohort(examples: Iterable[dict[str, Any]]) -> dict[str, dict[str,
     groups: dict[str, list[dict[str, Any]]] = {}
     for row in examples:
         groups.setdefault(row["cohort"], []).append(row)
-    return {cohort: aggregate_ranking_metrics(rows) for cohort, rows in sorted(groups.items())}
+    return {
+        cohort: {**aggregate_ranking_metrics(rows), "example_count": len(rows)}
+        for cohort, rows in sorted(groups.items())
+    }

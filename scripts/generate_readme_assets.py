@@ -143,17 +143,25 @@ def long_tail_frontier(evidence: dict) -> None:
 
 def pipeline_evidence(evidence: dict) -> None:
     run = evidence["databricks_run"]
-    width, height = 1100, 370
+    certification = run["certification"]
+    width, height = 1200, 390
     body = [
         '<text x="45" y="46" font-size="26" font-weight="700">Verified Databricks serverless run</text>',
         f'<text x="45" y="74" font-size="15" class="muted">Run {run["run_id"]} · {run["duration_seconds"]:.1f}s · full replay succeeded</text>',
     ]
     boxes = [
-        (45, 118, 185, "Bootstrap", "2 SHA-256 checks"),
-        (275, 98, 185, "Bronze reviews", f"{run['tables']['bronze_reviews']:,} rows"),
-        (275, 180, 185, "Bronze metadata", f"{run['tables']['bronze_product_metadata']:,} rows"),
-        (510, 139, 185, "Silver", f"{run['tables']['silver_interactions']:,} interactions"),
-        (745, 139, 185, "Gold", f"{run['tables']['gold_training_labels']:,} labels"),
+        (40, 118, 170, "Bootstrap", "2 SHA-256 checks"),
+        (250, 98, 175, "Bronze reviews", f"{run['tables']['bronze_reviews']:,} rows"),
+        (250, 180, 175, "Bronze metadata", f"{run['tables']['bronze_product_metadata']:,} rows"),
+        (470, 139, 175, "Silver", f"{run['tables']['silver_interactions']:,} interactions"),
+        (690, 139, 175, "Gold", f"{run['tables']['gold_training_labels']:,} labels"),
+        (
+            910,
+            139,
+            240,
+            "Certify",
+            f"{certification['assertion_count']}/11 assertions · PASS",
+        ),
     ]
     for x, y, box_width, label, detail in boxes:
         body.extend(
@@ -164,11 +172,12 @@ def pipeline_evidence(evidence: dict) -> None:
             ]
         )
     for x1, y1, x2, y2 in (
-        (230, 150, 275, 130),
-        (230, 150, 275, 212),
-        (460, 130, 510, 171),
-        (460, 212, 510, 171),
-        (695, 171, 745, 171),
+        (210, 150, 250, 130),
+        (210, 150, 250, 212),
+        (425, 130, 470, 171),
+        (425, 212, 470, 171),
+        (645, 171, 690, 171),
+        (865, 171, 910, 171),
     ):
         body.extend(
             [
@@ -179,10 +188,11 @@ def pipeline_evidence(evidence: dict) -> None:
     checks = run["assertions"]
     body.extend(
         [
-            '<rect x="45" y="282" width="885" height="50" rx="12" fill="#ecfdf5" stroke="#86efac"/>',
-            '<text x="65" y="312" font-size="14" font-weight="700" fill="#166534">PASS</text>',
-            f'<text x="120" y="304" font-size="13">replay attempts={checks["manifest_replay_attempts"]} · Bronze ID duplicates={checks["bronze_reviews_duplicate_ids"] + checks["bronze_metadata_duplicate_ids"]} · quarantined={checks["quarantined_rows"]}</text>',
-            f'<text x="120" y="321" font-size="13">Silver duplicates={checks["duplicate_interaction_ids"]} · flagged={checks["flagged_interactions"]} · item leakage={checks["item_feature_leakage_rows"]} · sequence leakage={checks["sequence_leakage_rows"]}</text>',
+            '<rect x="40" y="282" width="1110" height="68" rx="12" fill="#ecfdf5" stroke="#86efac"/>',
+            '<text x="60" y="321" font-size="14" font-weight="700" fill="#166534">CERTIFIED</text>',
+            f'<text x="145" y="305" font-size="13">replay attempts={checks["manifest_replay_attempts"]} · Bronze ID duplicates={checks["bronze_reviews_duplicate_ids"] + checks["bronze_metadata_duplicate_ids"]} · quarantined={checks["quarantined_rows"]}</text>',
+            f'<text x="145" y="323" font-size="13">Silver duplicates={checks["duplicate_interaction_ids"]} · flagged={checks["flagged_interactions"]} · item leakage={checks["item_feature_leakage_rows"]} · sequence leakage={checks["sequence_leakage_rows"]}</text>',
+            f'<text x="145" y="341" font-size="12" class="muted">source state {certification["source_set_sha256"][:12]}… · table state {certification["table_state_sha256"][:12]}… · failed assertions={certification["failed_assertion_count"]}</text>',
         ]
     )
     _write(

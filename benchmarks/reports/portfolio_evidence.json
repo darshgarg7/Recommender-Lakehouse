@@ -12,13 +12,20 @@
       "duplicate_interaction_ids": 0,
       "flagged_interactions": 0,
       "item_feature_leakage_rows": 0,
-      "manifest_replay_attempts": 1,
+      "manifest_replay_attempts": 2,
       "quarantined_rows": 0,
       "sequence_leakage_rows": 0
     },
-    "duration_seconds": 189.554,
+    "certification": {
+      "assertion_count": 11,
+      "contract_version": "lakehouse-certification/v1",
+      "failed_assertion_count": 0,
+      "source_set_sha256": "583f28aa91a15d432c0d027eae92c443bc327b09f96d01c777b37254115998e5",
+      "table_state_sha256": "9a65c0625dc2523080aa3c1361ddb61480d99239cf3eec0c2edce945860d5fc5"
+    },
+    "duration_seconds": 208.495,
     "job_id": 324020003477621,
-    "run_id": 813156246300863,
+    "run_id": 144998663962696,
     "status": "SUCCESS",
     "tables": {
       "bronze_product_metadata": 3391,
