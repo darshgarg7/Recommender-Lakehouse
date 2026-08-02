@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import html
 import json
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "benchmarks/reports/portfolio_evidence.json"
 ASSETS = ROOT / "assets"
+CHECK_ONLY = False
 COLORS = ["#2563eb", "#7c3aed", "#0891b2", "#ea580c"]
 
 
@@ -30,7 +32,12 @@ def _svg_document(width: int, height: int, body: Iterable[str], title: str) -> s
 
 def _write(name: str, content: str) -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
-    (ASSETS / name).write_text(content, encoding="utf-8")
+    destination = ASSETS / name
+    if CHECK_ONLY:
+        if not destination.exists() or destination.read_text(encoding="utf-8") != content:
+            raise SystemExit(f"generated README visual is stale: {destination}")
+        return
+    destination.write_text(content, encoding="utf-8")
 
 
 def model_comparison(evidence: dict) -> None:
@@ -291,13 +298,145 @@ def scale_benchmark(evidence: dict) -> None:
     )
 
 
+def distributed_model_benchmark(evidence: dict) -> None:
+    benchmark = evidence["distributed_recommender_benchmark"]
+    training = benchmark["training"]
+    evaluation = benchmark["evaluation"]
+    models = benchmark["models"]
+    run = benchmark["run"]
+    width, height = 1200, 500
+    body = [
+        '<text x="45" y="46" font-size="26" font-weight="700">Distributed temporal recommender benchmark</text>',
+        f'<text x="45" y="74" font-size="15" class="muted">Spark MLlib implicit ALS · rank {benchmark["configuration"]["rank"]} · Databricks run {run["run_id"]} · held-out future products</text>',
+    ]
+    cards = [
+        (40, "Positive source events", f"{training['positive_events'] / 1_000_000:.2f}M"),
+        (325, "Final training events", f"{training['events'] / 1_000:.1f}K"),
+        (610, "Learned user factors", f"{training['users'] / 1_000:.1f}K"),
+        (895, "Temporal test users", f"{evaluation['users']:,}"),
+    ]
+    for x, label, value in cards:
+        body.extend(
+            [
+                f'<rect x="{x}" y="98" width="265" height="74" rx="14" fill="#ffffff" stroke="#cbd5e1"/>',
+                f'<text x="{x + 16}" y="122" font-size="12" class="muted">{label}</text>',
+                f'<text x="{x + 16}" y="152" font-size="23" font-weight="700">{value}</text>',
+            ]
+        )
+    left, top, plot_width = 250, 215, 820
+    max_value = max(max(row["ndcg_at_10"], row["recall_at_10"]) for row in models)
+    scale_max = max(max_value * 1.15, 0.001)
+    for tick in range(5):
+        value = scale_max * tick / 4
+        x = left + plot_width * tick / 4
+        body.extend(
+            [
+                f'<line x1="{x:.1f}" y1="{top - 14}" x2="{x:.1f}" y2="{height - 70}" class="grid"/>',
+                f'<text x="{x:.1f}" y="{height - 45}" text-anchor="middle" font-size="12" class="muted">{value:.3f}</text>',
+            ]
+        )
+    for index, row in enumerate(models):
+        y = top + index * 72
+        label = html.escape(row["label"])
+        champion = " · serving" if row.get("is_champion") else ""
+        candidate = " · validation candidate" if row.get("is_validation_selected") else ""
+        body.append(
+            f'<text x="45" y="{y + 25}" font-size="15" font-weight="700">{label}{champion}{candidate}</text>'
+        )
+        for offset, (metric, color) in enumerate(
+            (("ndcg_at_10", COLORS[0]), ("recall_at_10", COLORS[1]))
+        ):
+            value = row[metric]
+            bar_y = y + offset * 26
+            bar_width = value / scale_max * plot_width
+            body.extend(
+                [
+                    f'<rect x="{left}" y="{bar_y}" width="{bar_width:.1f}" height="17" rx="8" fill="{color}"/>',
+                    f'<text x="{left + bar_width + 8:.1f}" y="{bar_y + 13}" font-size="12">{value:.4f}</text>',
+                ]
+            )
+    body.extend(
+        [
+            f'<rect x="45" y="{height - 38}" width="12" height="12" rx="3" fill="{COLORS[0]}"/>',
+            f'<text x="63" y="{height - 28}" font-size="12">NDCG@10</text>',
+            f'<rect x="150" y="{height - 38}" width="12" height="12" rx="3" fill="{COLORS[1]}"/>',
+            f'<text x="168" y="{height - 28}" font-size="12">Recall@10</text>',
+            f'<rect x="850" y="{height - 44}" width="310" height="26" rx="10" fill="#ecfdf5" stroke="#86efac"/>',
+            f'<text x="1005" y="{height - 27}" text-anchor="middle" font-size="12" font-weight="700" fill="#166534">{run["check_count"]}/{run["check_count"]} checks · CERTIFIED</text>',
+        ]
+    )
+    _write(
+        "distributed-model-benchmark.svg",
+        _svg_document(width, height, body, "Distributed temporal recommender benchmark"),
+    )
+
+
+def advanced_recommender_evidence(evidence: dict) -> None:
+    distributed = evidence["distributed_recommender_benchmark"]
+    sequence = evidence["sequential_recommender_benchmark"]
+    vector = evidence["managed_vector_search_benchmark"]
+    recall_interval = distributed["uncertainty_vs_popularity"]["candidate_recall_at_100"]
+    ndcg_interval = distributed["uncertainty_vs_popularity"]["ndcg_at_10"]
+    width, height = 1200, 470
+    body = [
+        '<text x="45" y="46" font-size="26" font-weight="700">Model release and managed serving evidence</text>',
+        '<text x="45" y="74" font-size="15" class="muted">Complexity is logged; only candidates that clear declared gates may serve</text>',
+    ]
+    cards = [
+        (40, "PAIRED RELEASE GATE", "Validation hybrid", "Popularity serves", "#fff7ed", "#fdba74"),
+        (420, "CAUSAL TRANSFORMER", "SASRec registered", "No serving alias", "#fef2f2", "#fca5a5"),
+        (800, "MANAGED ANN", "AI Search online", "7/7 checks pass", "#ecfdf5", "#86efac"),
+    ]
+    for x, eyebrow, title, status, fill, stroke in cards:
+        body.extend(
+            [
+                f'<rect x="{x}" y="104" width="360" height="302" rx="18" fill="{fill}" stroke="{stroke}" stroke-width="2"/>',
+                f'<text x="{x + 22}" y="135" font-size="12" font-weight="700" class="muted">{eyebrow}</text>',
+                f'<text x="{x + 22}" y="170" font-size="21" font-weight="700">{title}</text>',
+                f'<text x="{x + 22}" y="382" font-size="13" font-weight="700">{status}</text>',
+            ]
+        )
+    body.extend(
+        [
+            f'<text x="62" y="211" font-size="15">{distributed["evaluation"]["users"]:,} future test users</text>',
+            f'<text x="62" y="242" font-size="14">Recall@100 Δ CI [{recall_interval["lower"]:+.4f}, {recall_interval["upper"]:+.4f}]</text>',
+            f'<text x="62" y="273" font-size="14">NDCG@10 Δ CI [{ndcg_interval["lower"]:+.4f}, {ndcg_interval["upper"]:+.4f}]</text>',
+            '<text x="62" y="316" font-size="13" class="muted">Retrieval expands; ranking gain is not reliable.</text>',
+            '<text x="442" y="211" font-size="15">30,000 training users</text>',
+            f'<text x="442" y="242" font-size="14">{sequence["dataset"]["vocabulary_items"]:,}-item vocabulary · 2 layers</text>',
+            f'<text x="442" y="273" font-size="14">MLflow registered model v{sequence["artifacts"]["registered_model_version"]}</text>',
+            '<text x="442" y="316" font-size="13" class="muted">Validation loss prevents alias assignment.</text>',
+            f'<text x="822" y="211" font-size="15">{vector["service"]["indexed_rows"]:,} vectors · {vector["service"]["vector_dimension"]} dimensions</text>',
+            f'<text x="822" y="242" font-size="14">Exact-oracle Recall@10 {vector["quality"]["ann_recall_at_10"]:.3f}</text>',
+            f'<text x="822" y="273" font-size="14">p95 {vector["load"]["latency_p95_ms"]:.0f} ms · {vector["load"]["throughput_qps"]:.1f} req/s</text>',
+            '<text x="822" y="316" font-size="13" class="muted">Optimized URL · concurrent measured load.</text>',
+            '<line x1="400" y1="255" x2="420" y2="255" stroke="#94a3b8" stroke-width="2"/>',
+            '<line x1="780" y1="255" x2="800" y2="255" stroke="#94a3b8" stroke-width="2"/>',
+            '<text x="600" y="447" text-anchor="middle" font-size="12" class="muted">Delta-versioned inputs → validation-only decisions → synchronized managed retrieval</text>',
+        ]
+    )
+    _write(
+        "advanced-recommender-evidence.svg",
+        _svg_document(width, height, body, "Model release and managed serving evidence"),
+    )
+
+
 def main() -> None:
+    global CHECK_ONLY
+    parser = argparse.ArgumentParser(description="Generate deterministic README evidence visuals")
+    parser.add_argument(
+        "--check", action="store_true", help="fail if checked visuals do not match evidence"
+    )
+    CHECK_ONLY = parser.parse_args().check
     evidence = json.loads(EVIDENCE.read_text(encoding="utf-8"))
     model_comparison(evidence)
     long_tail_frontier(evidence)
     pipeline_evidence(evidence)
     scale_benchmark(evidence)
-    print(f"generated 4 README visuals in {ASSETS}")
+    distributed_model_benchmark(evidence)
+    advanced_recommender_evidence(evidence)
+    action = "verified" if CHECK_ONLY else "generated"
+    print(f"{action} 6 README visuals in {ASSETS}")
 
 
 if __name__ == "__main__":

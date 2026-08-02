@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" role="img" aria-labelledby="title desc">
+  <title id="title">Model release and managed serving evidence</title>
+  <desc id="desc">Generated from benchmarks/reports/portfolio_evidence.json.</desc>
+  <rect width="100%" height="100%" rx="20" fill="#f8fafc"/>
+  <style>
+    text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; fill: #0f172a; }
+    .muted { fill: #64748b; }
+    .grid { stroke: #cbd5e1; stroke-width: 1; }
+  </style>
+<text x="45" y="46" font-size="26" font-weight="700">Model release and managed serving evidence</text>
+<text x="45" y="74" font-size="15" class="muted">Complexity is logged; only candidates that clear declared gates may serve</text>
+<rect x="40" y="104" width="360" height="302" rx="18" fill="#fff7ed" stroke="#fdba74" stroke-width="2"/>
+<text x="62" y="135" font-size="12" font-weight="700" class="muted">PAIRED RELEASE GATE</text>
+<text x="62" y="170" font-size="21" font-weight="700">Validation hybrid</text>
+<text x="62" y="382" font-size="13" font-weight="700">Popularity serves</text>
+<rect x="420" y="104" width="360" height="302" rx="18" fill="#fef2f2" stroke="#fca5a5" stroke-width="2"/>
+<text x="442" y="135" font-size="12" font-weight="700" class="muted">CAUSAL TRANSFORMER</text>
+<text x="442" y="170" font-size="21" font-weight="700">SASRec registered</text>
+<text x="442" y="382" font-size="13" font-weight="700">No serving alias</text>
+<rect x="800" y="104" width="360" height="302" rx="18" fill="#ecfdf5" stroke="#86efac" stroke-width="2"/>
+<text x="822" y="135" font-size="12" font-weight="700" class="muted">MANAGED ANN</text>
+<text x="822" y="170" font-size="21" font-weight="700">AI Search online</text>
+<text x="822" y="382" font-size="13" font-weight="700">7/7 checks pass</text>
+<text x="62" y="211" font-size="15">4,313 future test users</text>
+<text x="62" y="242" font-size="14">Recall@100 Δ CI [+0.0014, +0.0077]</text>
+<text x="62" y="273" font-size="14">NDCG@10 Δ CI [-0.0029, +0.0004]</text>
+<text x="62" y="316" font-size="13" class="muted">Retrieval expands; ranking gain is not reliable.</text>
+<text x="442" y="211" font-size="15">30,000 training users</text>
+<text x="442" y="242" font-size="14">40,619-item vocabulary · 2 layers</text>
+<text x="442" y="273" font-size="14">MLflow registered model v1</text>
+<text x="442" y="316" font-size="13" class="muted">Validation loss prevents alias assignment.</text>
+<text x="822" y="211" font-size="15">24,443 vectors · 65 dimensions</text>
+<text x="822" y="242" font-size="14">Exact-oracle Recall@10 0.904</text>
+<text x="822" y="273" font-size="14">p95 399 ms · 67.0 req/s</text>
+<text x="822" y="316" font-size="13" class="muted">Optimized URL · concurrent measured load.</text>
+<line x1="400" y1="255" x2="420" y2="255" stroke="#94a3b8" stroke-width="2"/>
+<line x1="780" y1="255" x2="800" y2="255" stroke="#94a3b8" stroke-width="2"/>
+<text x="600" y="447" text-anchor="middle" font-size="12" class="muted">Delta-versioned inputs → validation-only decisions → synchronized managed retrieval</text>
+</svg>

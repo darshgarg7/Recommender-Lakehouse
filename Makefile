@@ -32,8 +32,7 @@ verify:
 	$(MAKE) demo
 	$(MAKE) receipt
 	PYTHONPATH=src python3 scripts/verify_local.py
-	$(MAKE) assets
-	git diff --exit-code -- assets
+	python3 scripts/generate_readme_assets.py --check
 	python3 -m pip wheel . -w dist --no-deps
 
 clean:

@@ -26,6 +26,15 @@ serve = [
   "fastapi>=0.115",
   "uvicorn>=0.34",
 ]
+sequence = [
+  "numpy>=2.0",
+  "torch>=2.3,<3",
+  "mlflow>=3.0,<4",
+]
+vector-search = [
+  "numpy>=2.0",
+  "databricks-sdk>=0.50",
+]
 dev = [
   "pytest>=8.3",
   "pytest-cov>=6.0",

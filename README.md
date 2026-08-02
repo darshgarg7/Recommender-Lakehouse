@@ -14,7 +14,13 @@ both sides of that loop:
 This is an evidence-first portfolio project. It has processed a 2.22-million-line
 [Amazon Reviews 2023](https://amazon-reviews-2023.github.io/) category in a live Databricks
 workspace and replayed the result under the same contracts. It does **not** claim to have trained
-on the full Amazon corpus or to have demonstrated CTR, revenue, online latency, or causal lift.
+on the full Amazon corpus or to have demonstrated CTR, revenue, causal lift, or a client-to-service
+production latency SLO.
+
+**Review path:** [measured results](#measured-results) · [architecture](#architecture) ·
+[detailed evidence diagram](diagram.md) ·
+[recommender design](#recommender-design) · [reproduce locally](#run-locally) ·
+[deploy to Databricks](#deploy-to-databricks-free-edition) · [limitations](#intended-use-and-limitations)
 
 ## Project at a glance
 
@@ -27,9 +33,14 @@ on the full Amazon corpus or to have demonstrated CTR, revenue, online latency, 
 | Leakage-safe Gold output | 1,921,223 labels, sequences, and item snapshots |
 | Post-integrity throughput | 2.22M lines transformed and certified in 152.653 s; 14.6K lines/s |
 | Measured Delta footprint | 1,066,761,382 bytes across 106 files and 7 principal tables |
+| Distributed model scope | 345,734 events; 145,552 user factors; 24,443 item factors |
+| Paired temporal inference | 10,000 bootstrap samples across all 4,313 eligible future users |
+| Release result | Hybrid Recall@100 gain is significant; NDCG gate fails; popularity stays live |
+| Causal sequence scope | 47,850 examples; 30,000 users; 40,619-item vocabulary; MLflow model v1 |
+| Managed ANN serving | 24,443 vectors; 0.904 Recall@10; p95 399 ms at concurrency 16 |
 | Real local model scope | 1,683 interactions from 400 repeat users |
 | Real evaluation set | 263 positive test examples |
-| Automated tests | 35 passing |
+| Automated tests | 56 passing |
 | Replay assertions | 0 duplicate Bronze/Silver IDs after a counted full replay |
 
 The clean scale run was `870720668226580`; its counted replay was `940162686328743`. Both passed
@@ -38,6 +49,18 @@ seconds, preserved every business row count and the source-set fingerprint, and 
 manifest replay counters to one.
 
 ![Certified multi-million-row scale benchmark](assets/scale-benchmark.svg)
+
+### What a reviewer can verify in 90 seconds
+
+| Question | Short answer | Evidence path |
+|---|---|---|
+| Is the scale real? | 2.22M landed lines and 1.07 GB of measured Delta state | Scale chart and run IDs above |
+| Is the ML real? | Distributed ALS plus a causal PyTorch Transformer, each with future holdouts | Model benchmarks below |
+| Is leakage controlled? | Strict `< label_timestamp` windows plus live SQL assertions | Architecture and certification sections |
+| Is replay real? | A second job preserved row counts and source/table fingerprints | Run `940162686328743` |
+| Can I reproduce it? | Python-only deterministic oracle plus a serverless Asset Bundle | `make verify`; `databricks bundle run` |
+| Does it hide weak results? | No; serving fails closed whenever the candidate loses | Model tables and promotion policy |
+| Is retrieval operational? | Managed AI Search, Delta-version gating, exact recall, and concurrent load | ANN benchmark below |
 
 ## What is built—and what is not
 
@@ -57,10 +80,11 @@ manifest replay counters to one.
 | Tamper-evident run receipts | **Verified locally** | Independent CLI verifies seven content-bound artifacts |
 | Databricks pipeline certification | **Verified live** | Initial scale run and replay: 11/11 assertions persisted in Delta |
 | XGBoost LambdaMART adapter | Implemented, **not used in reported runs** | Optional `ml` dependency |
-| MLflow logging adapter | Implemented, **not used in reported runs** | Optional Databricks dependency |
-| Spark ALS, real SASRec, transformer embeddings | **Not trained** | Integration roadmap |
-| Databricks Vector Search / ANN serving | **Not deployed** | Exact local index is the validation oracle |
-| Online service performance | **Not measured** | Optional synthetic-persona FastAPI surface only |
+| Distributed Spark MLlib implicit ALS | **Verified live** | Run `16821026705008`; 15/15 checks and paired intervals |
+| Causal SASRec transformer | **Verified live, rejected** | Run `334941587375930`; 8/8 checks on 30,000 training users |
+| MLflow deployment lineage | **Verified live** | Delta v2 → run `8c6ec944…a5d6` → registered model version 1 → no alias |
+| Managed Databricks AI Search | **Verified live** | 24,443 vectors; synchronized Delta v27; 0.904 exact-oracle Recall@10 |
+| Concurrent online retrieval load | **Verified live** | 500 requests at concurrency 16; p95 399 ms; 67.0 req/s |
 | All-domain / full-corpus benchmark | **Not run** | Scale claim is limited to one 2.22M-line offline category |
 
 ## Measured results
@@ -119,6 +143,106 @@ self-joins that can grow quadratically.
 | `workspace.scale_gold.gold_user_sequences_asof` | 1,921,223 | 6 | 106,850,590 B |
 | `workspace.scale_gold.gold_item_statistics_asof` | 1,921,223 | 6 | 103,327,320 B |
 
+### Distributed recommender benchmark: Appliances
+
+The independent serverless model job reads the certified 2.11M-row Silver table and scans
+1,623,254 verified positive events. It uses a global 80/10/10 temporal policy: tune reciprocal-rank
+fusion on the middle window, refit through the validation boundary, and touch the final future
+window only once. Targets must be warm, previously unseen products; training history is removed
+from every recommendation list.
+
+The final Spark MLlib implicit ALS fit used rank 64, 12 iterations, confidence-weighted events,
+345,734 training events collapsed into 345,066 user-product pairs, 145,552 user factors, and 24,443
+item factors. Validation selected an ALS weight of 0.25 from the declared grid
+`[0, 0.25, 0.5, 0.75, 1]`. The evaluation cap is 10,000, but the benchmark uses every eligible
+user: 4,474 in validation and 4,313 in the untouched test window.
+
+Run `16821026705008` succeeded in 299.398 seconds end to end; measured benchmark logic took
+236.877 seconds. Contract `spark-als-temporal-benchmark/v4` passed 15/15 checks. Benchmark ID
+`d4ba9380…fb721` binds Silver Delta version 2, temporal cutoffs, hyperparameters, and both model and
+bootstrap implementation hashes; certificate summary `a1aa1a06…80c8` binds metrics, uncertainty,
+the release decision, and artifact locations.
+
+| Test model | Candidate Recall@100 | Recall@10 | NDCG@10 | Core coverage@10 |
+|---|---:|---:|---:|---:|
+| Popularity · serving | 0.0941 | **0.0169** | **0.0089** | 0.057% |
+| Spark implicit ALS | 0.0512 | 0.0088 | 0.0045 | **3.248%** |
+| Temporal hybrid RRF · validation candidate | **0.0985** | 0.0153 | 0.0076 | 0.221% |
+
+The point estimates alone would invite a misleading story, so the release gate uses a deterministic
+10,000-sample paired user bootstrap. The hybrid's Recall@100 delta is **+0.00441** with a 95% CI of
+**[+0.00139, +0.00765]** and two-sided p≈0.004. Its NDCG@10 delta is **−0.00128** with a 95% CI of
+**[−0.00290, +0.00038]** and p≈0.127; Recall@10 is likewise inconclusive. Validation therefore
+nominates the hybrid as a useful retrieval candidate, but the one-time test release gate rejects
+it and keeps popularity as the serving champion. The test chooses no hyperparameter and substitutes
+no alternate learned model.
+
+This result is more informative than the earlier 2,000-user point estimate: collaboration expands
+the reachable candidate set, but ranking does not yet convert that signal into reliable top-ten
+utility. Pure ALS also exposes 56.7× more of the collaborative core than serving popularity while
+losing relevance. The architecture preserves both facts instead of equating complexity with a win.
+
+Free Edition's Unity Catalog runtime does not permit MLlib's `recommendForUserSubset` higher-order
+plan. The benchmark therefore trains ALS distributively, then evaluates the learned factors with a
+bounded, blockwise exact scorer over the complete 24,443-item collaborative core for every eligible
+validation and test user.
+Spark performs temporal filtering, history exclusion, RRF, metrics, Delta materialization, and
+certification. The final model, factors, 43,130 serving rows, paired user metrics, uncertainty
+ledger, and a content-addressed 15-check certificate are persisted separately from ETL evidence.
+
+![Distributed temporal recommender benchmark](assets/distributed-model-benchmark.svg)
+
+### Sequential recommender and deployment lineage
+
+The sequence path is a real SASRec-style model, not an LLM wrapper: a two-layer causal PyTorch
+TransformerEncoder with four attention heads, 64-dimensional states, 20-event histories, sampled
+pairwise loss, and validation-only epoch selection. It learned from 47,850 next-novel-product
+examples across 30,000 users and a 40,619-item vocabulary, then refit through validation before a
+single 4,000-user future test.
+
+Run `334941587375930` succeeded in 604.642 seconds and passed all 8 contract checks. Popularity
+again won honestly: test NDCG@10 was 0.00606 for popularity and 0.00053 for SASRec. The paired
+SASRec-minus-popularity delta was **−0.00552**, with a 95% CI of
+**[−0.00728, −0.00383]**. The candidate was therefore rejected.
+
+That decision has operational consequences. MLflow run `8c6ec944…a5d6` records the exact Silver
+Delta version, parameters, metrics, TorchScript artifact, and registration event. Unity Catalog
+model `workspace.scale_serving.marketplace_sasrec_encoder` exists at version 1, while its serving
+alias remains unset because validation failed. The Delta lineage ledger records the same rejected
+decision. Registration proves reproducibility and auditability; an alias means deployment
+eligibility, so the system never confuses “logged” with “approved.”
+
+### Managed ANN retrieval and online load
+
+Databricks AI Search endpoint `marketplace-recommender-search` now serves a Delta Sync index over
+all 24,443 learned ALS item factors. Because AI Search uses L2 distance while ALS ranks by inner
+product, each 64-dimensional item factor is transformed into an equivalent 65-dimensional
+maximum-inner-product-to-L2 vector; queries receive a zero-valued final coordinate. Managed ANN
+retrieves 500 candidates and the serving path exactly rescores that bounded pool with ALS factors.
+
+Run `778127295675418` synchronized the index through source Delta commit 27 before issuing any
+query, then passed all 7 checks. Quality was measured against a full exact inner-product oracle for
+200 learned users. Load used the optimized index URL for 500 complete retrieval-and-rescore
+requests at concurrency 16.
+
+| Managed retrieval measure | Observed result | Release contract |
+|---|---:|---:|
+| Indexed rows | 24,443 / 24,443 | Complete |
+| Exact-oracle Recall@10 | **0.904** | ≥ 0.85 |
+| Latency p50 | 213.1 ms | Reported |
+| Latency p95 | **399.3 ms** | ≤ 1,000 ms |
+| Latency p99 | 439.1 ms | Reported |
+| Completed throughput | **67.0 requests/s** | 500/500 without error |
+
+This is measured service-side retrieval latency, including exact candidate rescoring. It is not a
+browser-to-service production SLO, an autoscaling claim, or a paid-workspace capacity benchmark.
+The first provisioning attempt also exposed a subtle operational hazard: an index may report
+`ready=true` while Delta Sync is still active. Contract v3 therefore requires both
+`ONLINE_NO_PENDING_UPDATE` and a processed commit at least as new as the data-bearing source
+version before recall or latency can be certified.
+
+![Model release and managed serving evidence](assets/advanced-recommender-evidence.svg)
+
 ### Live Databricks lakehouse
 
 The same two files used by the real local run were landed in the managed Unity Catalog volume
@@ -159,11 +283,13 @@ digest is `9a65c062…5fc5`. These are evidence identifiers, not security signat
 
 ![Verified Magazine Databricks pipeline evidence](assets/databricks-pipeline-evidence.svg)
 
-### Real-data recommendation quality
+### Local cold-start component benchmark
 
-The real experiment deliberately limits modeling to 400 repeat users so it stays reproducible on a
-laptop. ETL processed 70,922 interactions; only 1,683 were in model scope, 1,009 preceded the
-training cutoff, 884 candidate rows trained the ranker, and 263 positives were evaluated.
+This dependency-light experiment deliberately limits modeling to 400 repeat users so the complete
+content-routing, ranking, promotion, receipt, and serving path stays reproducible in CI. ETL
+processed 70,922 interactions; 1,683 were in model scope, 1,009 preceded the training cutoff, 884
+candidate rows trained the ranker, and 263 positives were evaluated. It complements the distributed
+ALS benchmark; it is not the primary scale result.
 
 | Model | NDCG@10 | Recall@10 | Zero-history Recall@10 |
 |---|---:|---:|---:|
@@ -210,6 +336,9 @@ content-similarity champion.
 | Databricks certified replay | 71,497 reviews + 3,391 metadata rows | ETL + 11 assertions | 208.5 s job runtime | Not measured; Free Edition |
 | Databricks Appliances scale | 2.22M lines; 2.11M Silver interactions | ETL + 11 assertions | 695.653 s total; 152.653 s post-integrity | Not measured; Free Edition |
 | Databricks scale replay | Same immutable source and table state | Replay + 11 assertions | 172.780 s job runtime | Not measured; Free Edition |
+| Databricks distributed ALS | 1.62M verified positives scanned | 345,734 events; 145,552 user factors | 299.398 s job; 236.877 s measured logic | Not measured; Free Edition |
+| Databricks causal SASRec | 1.62M verified positives scanned | 47,850 examples; 30,000 training users | 604.642 s job runtime | Not measured; Free Edition |
+| Databricks managed ANN | 24,443 Delta-synced vectors | 200 exact-quality queries + 500 load requests | 277.957 s job; p95 399 ms retrieval | Not measured; Free Edition |
 | Full Amazon corpus | Not run | Not run | Not measured | Not measured |
 
 ## Architecture
@@ -237,18 +366,25 @@ flowchart TB
         B --> S["Silver · canonical entities"]
         S --> G["Gold · strict as-of state"]
         G --> C["Content representation"]
-        G --> T["Collaborative teacher"]
+        G --> ALS["Distributed implicit ALS"]
+        G --> SR["Causal SASRec encoder"]
         C --> H["Evidence-capability router"]
-        T --> H
+        ALS --> H
+        SR --> H
+        H --> MP["MIPS-to-L2 transform"]
+        MP --> VS["Managed AI Search ANN"]
         H --> R["Multi-channel retrieval"]
+        VS --> R
         R --> K["Learned relevance ranker"]
         K --> V["Regret-bounded marketplace policy"]
     end
     subgraph E["Evidence and control plane"]
-        Q["Identical temporal evaluation"] --> P["Content-addressed promotion policy"]
-        P --> CH["Serving champion"]
+        Q["Validation-only candidate selection"] --> PB["Paired user bootstrap"]
+        PB --> P["One-time test release gate"]
+        P --> CH["Serving champion or baseline fallback"]
         CH --> D["Decision-carrying rows"]
         D --> RC["Tamper-evident run receipt"]
+        P --> ML["MLflow run · Delta version · model alias"]
         CF["Databricks certification task"] --> CT["Delta certification ledger"]
     end
     G --> Q
@@ -269,8 +405,8 @@ separate certification for the materialized table state.
 
 | Boundary | Dependency-free executable oracle | Production replacement |
 |---|---|---|
-| Retrieval | Exact vector index | Vector Search or another ANN index, recall-tested against exact |
-| Collaboration | Deterministic sequential co-occurrence teacher | ALS or a trained sequential model |
+| Retrieval | Exact vector index | Managed Databricks AI Search, recall-tested against exact |
+| Collaboration | Deterministic local teacher | Distributed implicit ALS plus causal SASRec |
 | Content | Signed feature hashing | Versioned transformer or multimodal encoder |
 | Ranking | Pairwise linear ranker | LambdaMART or another group-aware learner |
 | Policy | Content-addressed Python contract | Registered policy artifact and model alias transition |
@@ -292,6 +428,9 @@ over.
 | Build as-of state with partitioned time windows | Prevents the quadratic growth of label-to-history self-joins while excluding timestamp ties |
 | Blend content and collaboration by history count | Gives zero-history products a representation without discarding warm-item behavior |
 | Compare against popularity and content on identical splits | Prevents a sophisticated architecture from hiding behind weak baselines |
+| Bootstrap matched user deltas | Quantifies uncertainty without breaking within-user policy pairing |
+| Separate candidate selection from release qualification | Validation tunes; test is touched once and can retain the baseline |
+| Transform ALS MIPS into L2 geometry | Lets managed ANN approximate the score ALS actually optimizes |
 | Content-address the promotion policy | A threshold change creates a new policy identity instead of silently changing deployment semantics |
 | Route the selected champion into batch serving | Prevents evaluation and production from disagreeing about which model won |
 | Bound marketplace objectives by score regret | Long-tail exposure cannot buy arbitrary relevance loss |
@@ -354,27 +493,39 @@ not a claim about confirmed product launch time.
 
 ## Recommender design
 
-The checked local system is intentionally dependency-light:
+The repository now has four complementary executable paths:
+
+- **Distributed benchmark:** Spark MLlib trains confidence-weighted implicit ALS on the Appliances
+  collaborative core. A global 80/10/10 time split tunes reciprocal-rank fusion on validation,
+  refits before the test boundary, and evaluates only future, warm, previously unseen products.
+- **Deterministic oracle:** the dependency-light local path exercises content cold start,
+  evidence-conditioned routing, learned ranking, constrained reranking, promotion, and serving in
+  CI without requiring Spark.
+- **Sequence specialist:** a two-layer causal self-attention encoder learns next-novel-product
+  behavior only for users with sufficient ordered history. It never replaces the cold-start path.
+- **Managed retrieval:** ALS inner-product factors are transformed into equivalent 65-dimensional
+  L2 vectors, Delta-synced into Databricks AI Search, and recall-tested against the exact oracle.
+
+Together they implement this decision system:
 
 1. A signed feature-hash encoder represents title, description, categories, brand, and attributes.
-2. A sequential co-interaction teacher provides a deterministic collaborative signal.
+2. Spark implicit ALS learns collaborative factors; causal SASRec specializes sufficiently long
+   histories; the local co-interaction teacher remains a deterministic contract oracle.
 3. A diagonal distiller maps content vectors toward collaborative vectors for warm products.
 4. An evidence-capability resolver selects `content_cold_start`, `distilled_sparse_hybrid`,
    `warm_hybrid`, `collaborative_only`, `graph_seeded_fallback`, or `catalog_fallback` without
    inventing missing signals.
 5. A count-aware gate assigns exactly zero collaborative weight to zero-history items.
-6. Exact vector search validates retrieval behavior without pretending to be production ANN.
+6. Exact search is the recall oracle; managed AI Search is the online ANN implementation.
 7. Hybrid, co-interaction, bought-together, and trend channels produce candidates with provenance.
 8. A pairwise linear ranker scores candidates.
 9. A constrained reranker may improve novelty, long-tail exposure, and redundancy only inside a
    normalized learned-score regret budget.
-10. A content-addressed promotion policy checks aggregate NDCG, retrieval coverage, zero-history
-    Recall@10, and sparse Recall@10. Missing metrics fail closed.
+10. Validation selects a candidate; a paired-bootstrap release gate checks the untouched test.
+    Missing metrics or an inconclusive NDCG interval fail closed to popularity.
 11. Batch serving executes the chosen champion and emits the policy and representation explanation.
-12. A run receipt binds source versions, temporal cutoffs, policy, claims, and seven artifact hashes.
-
-Spark ALS, a real SASRec implementation, transformer content encoders, LambdaMART training,
-Databricks Vector Search, and online load testing are deliberately separate integration milestones.
+12. MLflow binds the sequence encoder to its exact Delta version, metrics, run, registration, and
+    candidate alias; a separate receipt binds local source versions and artifact hashes.
 
 ## Run locally
 
@@ -384,6 +535,12 @@ Python 3.11+ is the only runtime requirement for the deterministic path:
 make test
 make demo
 ```
+
+`NVIDIA_API_KEY` is optional and intentionally absent from every core path. ALS, SASRec, AI Search,
+evaluation, MLflow lineage, and serving do not call an external LLM. A future offline enrichment
+job may use Nemotron to extract governed product attributes or generate reviewer-facing rationales,
+but an LLM is not a sequential recommender and is never allowed to become a training dependency.
+Local `.env` files are ignored; `.env.example` contains only an empty placeholder.
 
 `make demo` creates Amazon-shaped fixtures and writes the full local path to `artifacts/local/`.
 Run it twice to exercise replay behavior.
@@ -479,6 +636,9 @@ databricks fs cp artifacts/scale-appliances/landing/meta_Appliances.jsonl \
 databricks bundle validate -t scale -p <profile>
 databricks bundle deploy -t scale -p <profile>
 databricks bundle run marketplace_pipeline -t scale -p <profile>
+databricks bundle run marketplace_als_benchmark -t scale -p <profile>
+databricks bundle run marketplace_sasrec_benchmark -t scale -p <profile>
+databricks bundle run marketplace_vector_search_benchmark -t scale -p <profile>
 ```
 
 The target fixes the two observed SHA-256 digests in source control and writes only to
@@ -491,6 +651,10 @@ The deployed graph is:
 bootstrap checksum verification
         ├── bronze_reviews ──┐
         └── bronze_metadata ─┴── silver ── gold ── certify
+
+certified Silver state ── temporal split ── ALS tune ── final refit ── model certify
+                       ├── SASRec epoch search ── refit ── MLflow register/gate
+ALS factors ── MIPS-to-L2 vectors ── Delta Sync AI Search ── recall/load certify
 ```
 
 `certify` evaluates eleven invariants inside Spark, hashes the source set and table state, and
@@ -506,7 +670,7 @@ remain operator responsibilities.
 
 ```text
 .
-├── databricks.yml          # Serverless six-task deployment bundle
+├── databricks.yml          # Lakehouse, ALS, SASRec, and managed AI Search jobs
 ├── conf/                   # Local, real-local, integration, and benchmark profiles
 ├── infrastructure/        # Unity Catalog Terraform starting point
 ├── scripts/                # Databricks stage entrypoint
@@ -514,18 +678,17 @@ remain operator responsibilities.
 │   ├── ingestion/          # Download, checksum, manifest, validation
 │   ├── pipelines/          # Bronze, Silver, Gold, Databricks adapters
 │   ├── features/           # Sequences and strict point-in-time features
-│   ├── retrieval/          # Baselines, distillation, hybrid vectors, exact ANN
+│   ├── retrieval/          # Spark ALS, SASRec, hybrid vectors, exact and managed ANN
 │   ├── ranking/            # Candidate features, pairwise/LambdaMART rankers, reranker
 │   ├── evaluation/         # Temporal splits, cohorts, metrics, bootstrap intervals
 │   ├── governance/         # Promotion policy and tamper-evident run receipts
 │   ├── serving/            # Batch contract and optional FastAPI surface
 │   └── monitoring/         # Run summaries and quality metrics
 ├── tests/                  # Unit, contract, integration, leakage, failure injection
-├── benchmarks/             # Reserved configurations and measured reports
-└── dashboards/             # Reserved Databricks dashboard assets
+└── benchmarks/reports/     # Machine-readable measured evidence for public visuals
 ```
 
-Production logic lives in the package. Notebooks are exploration-only.
+Production logic lives in the package; the repository has no notebook-only pipeline stages.
 
 ## Tests
 
@@ -542,6 +705,10 @@ The suite currently covers:
 - Strict as-of joins and future-history rejection.
 - Window-plan contracts that prohibit quadratic Gold history joins.
 - Future-positive-safe negative sampling.
+- Distributed ALS job wiring, deterministic high-cardinality indexing, and benchmark identity.
+- Paired user bootstrap intervals and validation/test release separation.
+- Causal SASRec masking, sampled pairwise loss, MLflow lineage, and fail-closed aliasing.
+- MIPS-to-L2 equivalence, AI Search response contracts, and concurrent load summaries.
 - Zero-history gate boundaries.
 - Evidence-capability transitions and catalog fallbacks.
 - Replay-safe deterministic storage.
@@ -561,17 +728,17 @@ In priority order:
 
 1. Run a category-sharded, multi-file benchmark on paid compute and publish DBUs, dollars, shuffle,
    spill, and executor utilization—not just wall time.
-2. Add and compare Spark MLlib ALS, a real sequential model, and a transformer content encoder.
-3. Evaluate full-catalog retrieval with exact-vs-approximate recall and identical negative pools.
-4. Train LambdaMART on a larger validation set and publish user-level confidence intervals.
-5. Register data/model lineage and the executable promotion decision in MLflow model aliases.
-6. Synchronize embeddings to Databricks Vector Search and benchmark index refresh behavior.
-7. Load-test batch and optional online serving; report P50/P95/P99 and failure behavior.
-8. Audit exposure by brand, category, history cohort, and popularity before any marketplace claim.
+2. Add a pretrained transformer or multimodal content encoder and compare it with signed feature
+   hashing on the zero-history cohort.
+3. Train LambdaMART on a larger validation set and quantify ranking uncertainty by cohort.
+4. Audit exposure by brand, category, history cohort, and popularity before any marketplace claim.
+5. Run a failure-injection drill for Vector Search refresh, serving degradation, and Gold rebuild.
+6. Validate client-to-endpoint latency and autoscaling under representative paid-workspace traffic.
 
 Promotion requires replay and leakage checks, non-inferior relevance and retrieval, protected-cohort
-guardrails, reproducible table/model versions, and serving smoke tests. The current real hybrid does
-not pass that gate.
+guardrails, reproducible table/model versions, and serving smoke tests. The dependency-light local
+cold-start candidate, distributed hybrid, and SASRec candidate do not pass their release gates.
+They remain measured research artifacts—not online marketplace claims.
 
 ## Intended use and limitations
 
@@ -582,9 +749,10 @@ zero- and sparse-history inventory from product content. The optional public API
 Amazon reviews are selective observations, not impressions or clicks. Unobserved products are not
 confirmed negatives. Product metadata is a crawl-time snapshot, and image URLs can disappear.
 Popularity may encode seller and exposure inequities. The project demonstrates one certified
-2.22-million-line offline batch and replay; it does not establish all-domain or marketplace-traffic
-scale. Nothing here supports a claim about CTR, conversion, revenue, causal marketplace impact, or
-production online latency.
+2.22-million-line offline batch and replay, a temporal ALS benchmark over 1.62M positive events and
+all 4,313 eligible test users, and a bounded SASRec experiment on 30,000 training users. It does not
+establish all-domain, paid-compute, or marketplace-traffic scale. Nothing here supports a claim
+about CTR, conversion, revenue, causal marketplace impact, or a client-to-service production SLO.
 
 ## License
 

@@ -101,6 +101,234 @@
     },
     "workspace_tier": "Databricks Free Edition"
   },
+  "distributed_recommender_benchmark": {
+    "artifacts": {
+      "item_factors_table": "workspace.scale_features.als_item_factors",
+      "metrics_table": "workspace.scale_monitoring.recommender_benchmark_metrics",
+      "model_path": "/Volumes/workspace/default/marketplace_landing/scale/appliances/models/spark_implicit_als",
+      "paired_user_metrics_table": "workspace.scale_monitoring.recommender_paired_user_metrics",
+      "recommendations_table": "workspace.scale_serving.als_offline_recommendations",
+      "uncertainty_table": "workspace.scale_monitoring.recommender_benchmark_uncertainty",
+      "user_factors_table": "workspace.scale_features.als_user_factors"
+    },
+    "configuration": {
+      "alpha": 20.0,
+      "bootstrap_samples": 10000,
+      "candidate_k": 200,
+      "confidence_level": 0.95,
+      "evaluation_user_limit": 10000,
+      "max_iter": 12,
+      "rank": 64,
+      "reg_param": 0.08,
+      "rrf_als_weights": [0.0, 0.25, 0.5, 0.75, 1.0],
+      "seed": 20250308
+    },
+    "dataset": {
+      "positive_definition": "verified_purchase = true AND rating >= 4",
+      "source_delta_version": 2,
+      "source_table": "workspace.scale_silver.silver_interactions",
+      "train_cutoff": 1635969291151,
+      "validation_cutoff": 1660751898111
+    },
+    "evaluation": {
+      "release_qualified": false,
+      "release_rule": "lower bound of paired 95% NDCG@10 delta must exceed zero",
+      "selected_als_weight": 0.25,
+      "selection_split": "validation",
+      "serving_champion": "popularity",
+      "target_policy": "first warm previously-unseen positive per user",
+      "users": 4313,
+      "validation_selected_candidate": "temporal_hybrid_rrf",
+      "validation_users": 4474
+    },
+    "models": [
+      {
+        "candidate_recall_at_100": 0.0941340134,
+        "catalog_coverage_at_10": 0.0005727611,
+        "is_champion": true,
+        "label": "Popularity",
+        "ndcg_at_10": 0.0089094516,
+        "recall_at_10": 0.0169255738
+      },
+      {
+        "candidate_recall_at_100": 0.0512404359,
+        "catalog_coverage_at_10": 0.0324837377,
+        "is_champion": false,
+        "label": "Spark implicit ALS",
+        "ndcg_at_10": 0.0045022876,
+        "recall_at_10": 0.0088105727
+      },
+      {
+        "candidate_recall_at_100": 0.0985392998,
+        "catalog_coverage_at_10": 0.0022092215,
+        "is_champion": false,
+        "is_validation_selected": true,
+        "label": "Temporal hybrid RRF",
+        "ndcg_at_10": 0.0076312391,
+        "recall_at_10": 0.0153025736
+      }
+    ],
+    "run": {
+      "benchmark_id": "d4ba9380331d38d7fd1b8b9d40de3a151ab5ff3a718d04ea4b14ec6f2abfb721",
+      "bootstrap_implementation_sha256": "0d863c3c98cd25c6e9aad7394bcb6b282284ae67bb74b5ba1cf14cd1ff742f1d",
+      "check_count": 15,
+      "contract_version": "spark-als-temporal-benchmark/v4",
+      "duration_seconds": 299.398,
+      "failed_check_count": 0,
+      "implementation_sha256": "08fce72f019b93f2acb2afcaede92d3d6e58d81718c2e39867d576bca9d15dec",
+      "job_id": 585260312300256,
+      "measured_logic_seconds": 236.876980491,
+      "run_id": 16821026705008,
+      "status": "SUCCESS",
+      "summary_sha256": "a1aa1a067986bf26cfe882d84b025ffdc3e37b8bc37ae2aef32fcaf39cc280c8"
+    },
+    "training": {
+      "events": 345734,
+      "items": 24443,
+      "pairs": 345066,
+      "positive_events": 1623254,
+      "users": 145552
+    },
+    "uncertainty_vs_popularity": {
+      "candidate_recall_at_100": {
+        "lower": 0.0013911431,
+        "point_estimate": 0.0044052863,
+        "two_sided_p_value": 0.0039996000,
+        "upper": 0.0076512868
+      },
+      "ndcg_at_10": {
+        "lower": -0.0028981724,
+        "point_estimate": -0.0012782125,
+        "two_sided_p_value": 0.1267873213,
+        "upper": 0.0003750151
+      },
+      "recall_at_10": {
+        "lower": -0.0044052863,
+        "point_estimate": -0.0016230002,
+        "two_sided_p_value": 0.2867713229,
+        "upper": 0.0011592859
+      }
+    },
+    "workspace_tier": "Databricks Free Edition"
+  },
+  "sequential_recommender_benchmark": {
+    "artifacts": {
+      "item_embeddings_table": "workspace.scale_features.sasrec_item_embeddings",
+      "item_vocabulary_table": "workspace.scale_features.sasrec_item_vocabulary",
+      "lineage_table": "workspace.scale_monitoring.model_deployment_lineage",
+      "model_path": "/Volumes/workspace/default/marketplace_landing/scale/appliances/models/sasrec_encoder.pt",
+      "recommendations_table": "workspace.scale_serving.sasrec_offline_recommendations",
+      "registered_model_name": "workspace.scale_serving.marketplace_sasrec_encoder",
+      "registered_model_version": "1"
+    },
+    "configuration": {
+      "attention_heads": 4,
+      "bootstrap_samples": 5000,
+      "candidate_k": 100,
+      "epochs": 4,
+      "hidden_size": 64,
+      "max_sequence_length": 20,
+      "negative_samples": 4,
+      "transformer_layers": 2
+    },
+    "dataset": {
+      "source_delta_version": 2,
+      "source_table": "workspace.scale_silver.silver_interactions",
+      "test_users": 4000,
+      "training_examples": 47850,
+      "training_users": 30000,
+      "validation_users": 4000,
+      "vocabulary_items": 40619
+    },
+    "deployment": {
+      "alias": null,
+      "decision_basis": "validation-only",
+      "experiment_name": "/Shared/marketplace-recommender-scale",
+      "mlflow_run_id": "8c6ec9445e3f41b7b8f176997108a5d6",
+      "model_uri": "models:/m-1ed32de5908b48c0a7e1a796f2e4c05a",
+      "status": "rejected",
+      "test_was_used_for_promotion": false
+    },
+    "run": {
+      "benchmark_id": "e05ff8e3df2504dd9853dc7cbf6957eff90e9da695de82aa3ab5d5b09dea0832",
+      "check_count": 8,
+      "contract_version": "sasrec-temporal-benchmark/v1",
+      "duration_seconds": 604.642,
+      "failed_check_count": 0,
+      "implementation_sha256": "fbe8ba918d9a00133fea47ee3cdb6efcbb82005ced92db742b4b210e603a0c76",
+      "job_id": 1117814786024670,
+      "run_id": 334941587375930,
+      "status": "SUCCESS"
+    },
+    "test": {
+      "paired_ndcg_delta_vs_popularity": {
+        "lower": -0.0072805080,
+        "point_estimate": -0.0055249043,
+        "two_sided_p_value": 0.0003999200,
+        "upper": -0.0038327301
+      },
+      "popularity": {
+        "candidate_recall_at_100": 0.09325,
+        "ndcg_at_10": 0.0060568569,
+        "recall_at_10": 0.01425
+      },
+      "sasrec": {
+        "candidate_recall_at_100": 0.005,
+        "ndcg_at_10": 0.0005319526,
+        "recall_at_10": 0.0015
+      }
+    },
+    "workspace_tier": "Databricks Free Edition"
+  },
+  "managed_vector_search_benchmark": {
+    "configuration": {
+      "ann_candidate_pool_size": 500,
+      "ann_probe_scales": [1.0],
+      "concurrency": 16,
+      "final_k": 10,
+      "load_request_count": 500,
+      "maximum_p95_latency_ms": 1000.0,
+      "minimum_recall_at_10": 0.85,
+      "quality_query_count": 200
+    },
+    "load": {
+      "completed_requests": 500,
+      "latency_mean_ms": 236.3939355380,
+      "latency_p50_ms": 213.1483200002,
+      "latency_p95_ms": 399.2821623001,
+      "latency_p99_ms": 439.1249617601,
+      "throughput_qps": 66.9812106641
+    },
+    "quality": {
+      "ann_recall_at_10": 0.904,
+      "exact_oracle": "full 24,443-item ALS inner-product ranking",
+      "raw_ann_recall_at_10": 0.904,
+      "rerank": "exact inner product over managed ANN candidates"
+    },
+    "run": {
+      "benchmark_id": "03967c728b5bb9e934979c2605717bc6637913b47ecc4efa209b2300f0dae40e",
+      "check_count": 7,
+      "contract_version": "databricks-ai-search-benchmark/v3",
+      "duration_seconds": 277.957,
+      "failed_check_count": 0,
+      "implementation_sha256": "0eedd96a6a17ef2853aca4833476525145d3fef54724178c47e74e15ba8aabfb",
+      "job_id": 82788167034954,
+      "run_id": 778127295675418,
+      "status": "SUCCESS"
+    },
+    "service": {
+      "endpoint_id": "266337ce-ae7c-4d25-bfe7-432fc7d829b0",
+      "endpoint_name": "marketplace-recommender-search",
+      "index_name": "workspace.scale_serving.als_item_mips_index",
+      "indexed_rows": 24443,
+      "query_route": "optimized-index-url",
+      "source_delta_version": 27,
+      "source_table": "workspace.scale_serving.als_item_factor_search_vectors",
+      "transform": "maximum-inner-product-to-l2",
+      "vector_dimension": 65
+    },
+    "workspace_tier": "Databricks Free Edition"
+  },
   "long_tail_frontier": [
     {"long_tail_exposure": 0.9410646388, "long_tail_weight": 0.0, "ndcg_at_10": 0.0263822698},
     {"long_tail_exposure": 0.9479087452, "long_tail_weight": 0.1, "ndcg_at_10": 0.0256208508},
