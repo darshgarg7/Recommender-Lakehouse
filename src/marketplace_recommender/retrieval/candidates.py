@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
@@ -39,14 +39,14 @@ class CandidateGenerator:
             "cointeraction",
             sorted(sequential.items(), key=lambda pair: (-pair[1], pair[0]))[: min(200, limit)],
         )
-        graph_scores: Counter[str] = Counter()
+        graph_scores: dict[str, float] = defaultdict(float)
         for recency, item in enumerate(reversed(history[-10:]), start=1):
             for neighbor in self.graph.get(item, set()):
                 graph_scores[neighbor] += 1.0 / recency
         max_graph = max(graph_scores.values(), default=1.0)
         add("bought_together", [(item, score / max_graph) for item, score in graph_scores.items()])
         add("trend", recommend_popular(self.popularity, seen, min(100, limit)))
-        records = []
+        records: list[dict[str, Any]] = []
         for item, scores in channels.items():
             records.append(
                 {

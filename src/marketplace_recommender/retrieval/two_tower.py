@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -23,13 +24,13 @@ def cold_start_gate(interaction_count: int, has_content: bool = True) -> float:
 
 
 def build_collaborative_embeddings(
-    teacher_scores: dict[str, Counter[str]], dimension: int = 48
+    teacher_scores: Mapping[str, Mapping[str, float]], dimension: int = 48
 ) -> dict[str, list[float]]:
     output: dict[str, list[float]] = {}
     all_items = set(teacher_scores)
     all_items.update(item for neighbors in teacher_scores.values() for item in neighbors)
     for item in sorted(all_items):
-        neighbors = teacher_scores.get(item, {})
+        neighbors: Mapping[str, float] = teacher_scores.get(item, {})
         vectors = [hashed_id_vector(neighbor, dimension) for neighbor in neighbors]
         weights = list(neighbors.values())
         output[item] = (
@@ -50,7 +51,7 @@ class HybridTwoTower:
     def fit(
         cls,
         content_embeddings: dict[str, list[float]],
-        teacher_scores: dict[str, Counter[str]],
+        teacher_scores: Mapping[str, Mapping[str, float]],
         interactions: Iterable[dict[str, Any]],
         cutoff: int,
         has_content: dict[str, bool],

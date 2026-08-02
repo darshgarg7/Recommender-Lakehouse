@@ -1,4 +1,4 @@
-.PHONY: assets demo real-demo scale-download lint receipt test verify clean
+.PHONY: assets coverage demo real-demo scale-download lint receipt test typecheck verify clean
 
 assets:
 	python3 scripts/generate_readme_assets.py
@@ -17,6 +17,9 @@ lint:
 	ruff check src scripts tests
 	ruff format --check src scripts tests
 
+typecheck:
+	mypy src
+
 receipt:
 	PYTHONPATH=src python3 -m marketplace_recommender.cli verify-receipt \
 		--root artifacts/local --receipt artifacts/local/monitoring/run_receipt.json
@@ -24,10 +27,15 @@ receipt:
 test:
 	PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_*.py' -v
 
+coverage:
+	PYTHONPATH=src coverage run -m unittest discover -s tests -p 'test_*.py'
+	coverage report
+
 verify:
 	python3 -m compileall -q src scripts tests
 	$(MAKE) lint
-	$(MAKE) test
+	$(MAKE) typecheck
+	$(MAKE) coverage
 	$(MAKE) demo
 	$(MAKE) demo
 	$(MAKE) receipt

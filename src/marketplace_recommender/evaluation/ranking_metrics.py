@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from statistics import mean
-from typing import Iterable
+from typing import Iterable, cast
 
 
 def recall_at_k(ranked: list[str], relevant: set[str], k: int) -> float:
@@ -36,10 +36,11 @@ def aggregate_ranking_metrics(rows: Iterable[dict[str, object]]) -> dict[str, fl
             name: 0.0
             for name in ("ndcg_at_10", "ndcg_at_20", "recall_at_10", "recall_at_20", "mrr")
         }
+    typed = [(cast(list[str], row["ranked"]), cast(set[str], row["relevant"])) for row in examples]
     return {
-        "ndcg_at_10": mean(ndcg_at_k(row["ranked"], row["relevant"], 10) for row in examples),
-        "ndcg_at_20": mean(ndcg_at_k(row["ranked"], row["relevant"], 20) for row in examples),
-        "recall_at_10": mean(recall_at_k(row["ranked"], row["relevant"], 10) for row in examples),
-        "recall_at_20": mean(recall_at_k(row["ranked"], row["relevant"], 20) for row in examples),
-        "mrr": mean(reciprocal_rank(row["ranked"], row["relevant"]) for row in examples),
+        "ndcg_at_10": mean(ndcg_at_k(ranked, relevant, 10) for ranked, relevant in typed),
+        "ndcg_at_20": mean(ndcg_at_k(ranked, relevant, 20) for ranked, relevant in typed),
+        "recall_at_10": mean(recall_at_k(ranked, relevant, 10) for ranked, relevant in typed),
+        "recall_at_20": mean(recall_at_k(ranked, relevant, 20) for ranked, relevant in typed),
+        "mrr": mean(reciprocal_rank(ranked, relevant) for ranked, relevant in typed),
     }

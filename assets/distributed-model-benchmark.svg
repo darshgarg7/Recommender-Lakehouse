@@ -8,7 +8,7 @@
     .grid { stroke: #cbd5e1; stroke-width: 1; }
   </style>
 <text x="45" y="46" font-size="26" font-weight="700">Distributed temporal recommender benchmark</text>
-<text x="45" y="74" font-size="15" class="muted">Spark MLlib implicit ALS · rank 64 · Databricks run 16821026705008 · held-out future products</text>
+<text x="45" y="74" font-size="15" class="muted">Spark MLlib implicit ALS · rank 64 · Databricks run 51888471127820 · held-out future products</text>
 <rect x="40" y="98" width="265" height="74" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
 <text x="56" y="122" font-size="12" class="muted">Positive source events</text>
 <text x="56" y="152" font-size="23" font-weight="700">1.62M</text>
@@ -20,32 +20,32 @@
 <text x="626" y="152" font-size="23" font-weight="700">145.6K</text>
 <rect x="895" y="98" width="265" height="74" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
 <text x="911" y="122" font-size="12" class="muted">Temporal test users</text>
-<text x="911" y="152" font-size="23" font-weight="700">4,313</text>
+<text x="911" y="152" font-size="23" font-weight="700">4,316</text>
 <line x1="250.0" y1="201" x2="250.0" y2="430" class="grid"/>
 <text x="250.0" y="455" text-anchor="middle" font-size="12" class="muted">0.000</text>
 <line x1="455.0" y1="201" x2="455.0" y2="430" class="grid"/>
-<text x="455.0" y="455" text-anchor="middle" font-size="12" class="muted">0.005</text>
+<text x="455.0" y="455" text-anchor="middle" font-size="12" class="muted">0.006</text>
 <line x1="660.0" y1="201" x2="660.0" y2="430" class="grid"/>
-<text x="660.0" y="455" text-anchor="middle" font-size="12" class="muted">0.010</text>
+<text x="660.0" y="455" text-anchor="middle" font-size="12" class="muted">0.011</text>
 <line x1="865.0" y1="201" x2="865.0" y2="430" class="grid"/>
-<text x="865.0" y="455" text-anchor="middle" font-size="12" class="muted">0.015</text>
+<text x="865.0" y="455" text-anchor="middle" font-size="12" class="muted">0.017</text>
 <line x1="1070.0" y1="201" x2="1070.0" y2="430" class="grid"/>
-<text x="1070.0" y="455" text-anchor="middle" font-size="12" class="muted">0.019</text>
+<text x="1070.0" y="455" text-anchor="middle" font-size="12" class="muted">0.022</text>
 <text x="45" y="240" font-size="15" font-weight="700">Popularity · serving</text>
-<rect x="250" y="215" width="375.3" height="17" rx="8" fill="#2563eb"/>
-<text x="633.3" y="228" font-size="12">0.0089</text>
-<rect x="250" y="241" width="713.0" height="17" rx="8" fill="#7c3aed"/>
-<text x="971.0" y="254" font-size="12">0.0169</text>
+<rect x="250" y="215" width="330.1" height="17" rx="8" fill="#2563eb"/>
+<text x="588.1" y="228" font-size="12">0.0089</text>
+<rect x="250" y="241" width="627.1" height="17" rx="8" fill="#7c3aed"/>
+<text x="885.1" y="254" font-size="12">0.0169</text>
 <text x="45" y="312" font-size="15" font-weight="700">Spark implicit ALS</text>
-<rect x="250" y="287" width="189.7" height="17" rx="8" fill="#2563eb"/>
-<text x="447.7" y="300" font-size="12">0.0045</text>
-<rect x="250" y="313" width="371.2" height="17" rx="8" fill="#7c3aed"/>
-<text x="629.2" y="326" font-size="12">0.0088</text>
+<rect x="250" y="287" width="238.7" height="17" rx="8" fill="#2563eb"/>
+<text x="496.7" y="300" font-size="12">0.0064</text>
+<rect x="250" y="313" width="489.7" height="17" rx="8" fill="#7c3aed"/>
+<text x="747.7" y="326" font-size="12">0.0132</text>
 <text x="45" y="384" font-size="15" font-weight="700">Temporal hybrid RRF · validation candidate</text>
-<rect x="250" y="359" width="321.5" height="17" rx="8" fill="#2563eb"/>
-<text x="579.5" y="372" font-size="12">0.0076</text>
-<rect x="250" y="385" width="644.7" height="17" rx="8" fill="#7c3aed"/>
-<text x="902.7" y="398" font-size="12">0.0153</text>
+<rect x="250" y="359" width="356.2" height="17" rx="8" fill="#2563eb"/>
+<text x="614.2" y="372" font-size="12">0.0096</text>
+<rect x="250" y="385" width="713.0" height="17" rx="8" fill="#7c3aed"/>
+<text x="971.0" y="398" font-size="12">0.0192</text>
 <rect x="45" y="462" width="12" height="12" rx="3" fill="#2563eb"/>
 <text x="63" y="472" font-size="12">NDCG@10</text>
 <rect x="150" y="462" width="12" height="12" rx="3" fill="#7c3aed"/>

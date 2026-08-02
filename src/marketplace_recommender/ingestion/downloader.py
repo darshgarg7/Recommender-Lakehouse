@@ -63,17 +63,19 @@ class BoundedDownloader:
                         partial.open(mode) as out,
                     ):
                         shutil.copyfileobj(response, out)
-                partial.replace(destination)
-                checksum = file_checksum(destination)
+                checksum = file_checksum(partial)
                 expected_checksum = obj.get("expected_checksum")
                 if expected_checksum and checksum != expected_checksum:
-                    destination.unlink(missing_ok=True)
                     raise ValueError(
                         f"checksum mismatch for {url}: expected {expected_checksum}, got {checksum}"
                     )
-                row_count, failures = validate_jsonl(destination)
+                row_count, failures = validate_jsonl(
+                    partial,
+                    compressed=destination.suffix == ".gz",
+                )
                 if failures:
                     raise ValueError(f"JSON validation failed: {failures[:3]}")
+                partial.replace(destination)
                 record: dict[str, object] = {
                     **obj,
                     "object_path": str(destination),

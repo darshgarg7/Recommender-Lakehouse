@@ -7,7 +7,7 @@ from marketplace_recommender.retrieval.vectors import dot, normalize
 
 @dataclass
 class ExactANNIndex:
-    """Exact local index used to measure and validate a production ANN implementation."""
+    """Exact local index used to measure and validate a managed ANN implementation."""
 
     vectors: dict[str, list[float]]
     domains: dict[str, str]

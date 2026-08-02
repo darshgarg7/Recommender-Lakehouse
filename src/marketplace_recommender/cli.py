@@ -5,7 +5,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from marketplace_recommender.config import PipelineConfig
 from marketplace_recommender.evaluation.bootstrap import bootstrap_mean_ci
@@ -226,8 +226,8 @@ def run_demo(
     user_deltas = [sum(values) / len(values) for values in deltas_by_user.values()]
     comparison_ci = bootstrap_mean_ci(user_deltas, samples=1_000, seed=config.seed)
     active_users = sorted({row["user_id"] for row in interactions})
-    batch_rows = []
-    batch_metric_rows = []
+    batch_rows: list[dict[str, Any]] = []
+    batch_metric_rows: list[dict[str, Any]] = []
     batch_timestamp = cutoffs.test_end + 1
     with metrics_log.timed("batch_inference"):
         for user_id in active_users:
@@ -491,8 +491,8 @@ def download_real_category(output_dir: str | Path, category: str) -> dict[str, A
     downloaded = BoundedDownloader(manifest, workers=2, retries=4).download_all(objects, landing)
     report = {
         "category": category,
-        "total_bytes": sum(int(row["compressed_bytes"]) for row in downloaded),
-        "total_rows": sum(int(row["validated_rows"]) for row in downloaded),
+        "total_bytes": sum(cast(int, row["compressed_bytes"]) for row in downloaded),
+        "total_rows": sum(cast(int, row["validated_rows"]) for row in downloaded),
         "objects": [
             {
                 "source_kind": row["source_kind"],

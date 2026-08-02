@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from typing import Any, Iterable
 
 
 class SequentialCooccurrenceTeacher:
-    """Deterministic local sequential baseline; production config can replace it with SASRec."""
+    """Deterministic local sequence oracle; managed benchmarks use the causal SASRec path."""
 
     def __init__(self) -> None:
-        self.transitions: dict[str, Counter[str]] = defaultdict(Counter)
+        self.transitions: dict[str, dict[str, float]] = defaultdict(dict)
 
     def fit(
         self, interactions: Iterable[dict[str, Any]], cutoff: int
@@ -23,11 +23,12 @@ class SequentialCooccurrenceTeacher:
             for index, source in enumerate(items):
                 for distance, target in enumerate(items[index + 1 : index + 4], start=1):
                     if source != target:
-                        self.transitions[source][target] += 1.0 / distance
+                        neighbors = self.transitions[source]
+                        neighbors[target] = neighbors.get(target, 0.0) + 1.0 / distance
         return self
 
     def score(self, history: list[str]) -> dict[str, float]:
-        scores: Counter[str] = Counter()
+        scores: dict[str, float] = defaultdict(float)
         for recency, source in enumerate(reversed(history[-10:]), start=1):
             for target, weight in self.transitions.get(source, {}).items():
                 scores[target] += weight / recency

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass, field
-from typing import Iterable
+from typing import Any, Iterable, cast
 
 from marketplace_recommender.ranking.features import FEATURE_NAMES
 
@@ -26,19 +26,21 @@ class PairwiseLinearRanker:
         groups: dict[str, list[dict[str, object]]] = {}
         for row in values:
             groups.setdefault(str(row["group_id"]), []).append(row)
-        pairs = []
+        pairs: list[tuple[dict[str, object], dict[str, object]]] = []
         for group_rows in groups.values():
-            positives = [row for row in group_rows if int(row["label"]) > 0]
-            negatives = [row for row in group_rows if int(row["label"]) <= 0]
+            positives = [row for row in group_rows if int(cast(int, row["label"])) > 0]
+            negatives = [row for row in group_rows if int(cast(int, row["label"])) <= 0]
             pairs.extend((positive, negative) for positive in positives for negative in negatives)
         self.weights = {name: 0.0 for name in FEATURE_NAMES}
         rng = random.Random(self.seed)
         for _ in range(epochs):
             rng.shuffle(pairs)
             for positive, negative in pairs:
+                positive_features = cast(dict[str, float], positive["features"])
+                negative_features = cast(dict[str, float], negative["features"])
                 differences = {
-                    name: float(positive["features"].get(name, 0.0))
-                    - float(negative["features"].get(name, 0.0))
+                    name: float(positive_features.get(name, 0.0))
+                    - float(negative_features.get(name, 0.0))
                     for name in FEATURE_NAMES
                 }
                 margin = sum(self.weights[name] * differences[name] for name in FEATURE_NAMES)
@@ -65,7 +67,7 @@ class LambdaMARTRanker:
 
     def __init__(self, seed: int = 20250308) -> None:
         self.seed = seed
-        self.model = None
+        self.model: Any | None = None
 
     def fit(self, rows: list[dict[str, object]]) -> "LambdaMARTRanker":
         try:
@@ -74,10 +76,15 @@ class LambdaMARTRanker:
         except ImportError as exc:
             raise RuntimeError("Install the 'ml' extra to use LambdaMARTRanker") from exc
         ordered = sorted(rows, key=lambda row: str(row["group_id"]))
-        x = np.asarray(
-            [[float(row["features"].get(name, 0.0)) for name in FEATURE_NAMES] for row in ordered]
-        )
-        y = np.asarray([int(row["label"]) for row in ordered])
+        feature_rows = [
+            [
+                float(cast(dict[str, float], row["features"]).get(name, 0.0))
+                for name in FEATURE_NAMES
+            ]
+            for row in ordered
+        ]
+        x = np.asarray(feature_rows)
+        y = np.asarray([int(cast(int, row["label"])) for row in ordered])
         group_sizes: list[int] = []
         previous = None
         for row in ordered:

@@ -21,13 +21,13 @@
 <text x="822" y="135" font-size="12" font-weight="700" class="muted">MANAGED ANN</text>
 <text x="822" y="170" font-size="21" font-weight="700">AI Search online</text>
 <text x="822" y="382" font-size="13" font-weight="700">7/7 checks pass</text>
-<text x="62" y="211" font-size="15">4,313 future test users</text>
-<text x="62" y="242" font-size="14">Recall@100 Δ CI [+0.0014, +0.0077]</text>
-<text x="62" y="273" font-size="14">NDCG@10 Δ CI [-0.0029, +0.0004]</text>
+<text x="62" y="211" font-size="15">4,316 future test users</text>
+<text x="62" y="242" font-size="14">Recall@100 Δ CI [+0.0030, +0.0086]</text>
+<text x="62" y="273" font-size="14">NDCG@10 Δ CI [-0.0010, +0.0026]</text>
 <text x="62" y="316" font-size="13" class="muted">Retrieval expands; ranking gain is not reliable.</text>
 <text x="442" y="211" font-size="15">30,000 training users</text>
-<text x="442" y="242" font-size="14">40,619-item vocabulary · 2 layers</text>
-<text x="442" y="273" font-size="14">MLflow registered model v1</text>
+<text x="442" y="242" font-size="14">40,622-item vocabulary · 2 layers</text>
+<text x="442" y="273" font-size="14">MLflow registered model v2</text>
 <text x="442" y="316" font-size="13" class="muted">Validation loss prevents alias assignment.</text>
 <text x="822" y="211" font-size="15">24,443 vectors · 65 dimensions</text>
 <text x="822" y="242" font-size="14">Exact-oracle Recall@10 0.904</text>

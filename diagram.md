@@ -9,8 +9,9 @@
 
 This document describes what is implemented and measured. It is not a claim of marketplace
 production deployment, causal lift, paid-workspace capacity, or client-to-service latency.
-The scale demonstrations use the Amazon Reviews 2023 Appliances category: 2.22 million landed
-JSONL rows, 2.11 million canonical interactions, and 1.92 million point-in-time Gold examples.
+The portability evidence uses Magazine Subscriptions and Appliances under the same bundle. The
+scale boundary is Appliances: 2.22 million landed JSONL rows, 2.11 million canonical interactions,
+and 1.92 million point-in-time Gold examples.
 
 ## 1. System topology
 
@@ -56,7 +57,7 @@ flowchart TB
         TEST["One-time future test<br/>release qualification"]
         POP["Scale serving champion<br/>popularity"]
         SASGATE["SASRec validation gate<br/>candidate rejected"]
-        MLF["MLflow lineage<br/>registered v1 · no alias"]
+        MLF["MLflow lineage<br/>registered v2 · no alias"]
         VCERT["AI Search quality + load<br/>7/7 checks"]
         CERT["Lakehouse and model<br/>Delta certification ledgers"]
         LOCALGATE["Isolated local gate<br/>strongest baseline retained"]
@@ -150,12 +151,12 @@ at the label timestamp from entering its own features and avoids quadratic label
 
 | Test path | Recall@100 | Recall@10 | NDCG@10 | Release state |
 |---|---:|---:|---:|---|
-| Popularity | 0.0941 | **0.0169** | **0.0089** | **Serving champion** |
-| Spark implicit ALS | 0.0512 | 0.0088 | 0.0045 | Rejected |
-| Temporal hybrid RRF | **0.0985** | 0.0153 | 0.0076 | Validation candidate; rejected by NDCG gate |
+| Popularity | 0.0943 | 0.0169 | 0.0089 | **Serving champion** |
+| Spark implicit ALS | 0.0612 | 0.0132 | 0.0064 | Rejected |
+| Temporal hybrid RRF | **0.1001** | **0.0192** | **0.0096** | Validation candidate; rejected by NDCG gate |
 
-The hybrid Recall@100 delta is positive with 95% CI `[+0.00139, +0.00765]`. Its NDCG@10 delta is
-negative and inconclusive with 95% CI `[-0.00290, +0.00038]`. Retrieval expansion alone is not
+The hybrid Recall@100 delta is positive with 95% CI `[+0.00301, +0.00857]`. Its NDCG@10 delta is
+positive but inconclusive with 95% CI `[-0.00099, +0.00262]`. Retrieval expansion alone is not
 treated as a ranking win.
 
 ### 4.2 Causal SASRec
@@ -164,12 +165,12 @@ The sequential path is a real causal PyTorch Transformer, not a co-occurrence ta
 LLM. It uses two Transformer encoder layers, four attention heads, 64-dimensional states,
 20-event histories, and sampled pairwise loss.
 
-- Training scope: 47,850 examples from 30,000 users.
-- Vocabulary: 40,619 products.
+- Training scope: 47,853 examples from 30,000 users.
+- Vocabulary: 40,622 products.
 - Validation chooses the epoch; test never promotes the model.
-- Test NDCG@10: popularity `0.00606`, SASRec `0.00053`.
-- Paired SASRec-minus-popularity 95% CI: `[-0.00728, -0.00383]`.
-- Deployment state: registered model version 1, rejected, no serving alias.
+- Test NDCG@10: popularity `0.00606`, SASRec `0.00000`.
+- Paired SASRec-minus-popularity 95% CI: `[-0.00786, -0.00447]`.
+- Deployment state: registered model version 2, rejected, no serving alias.
 
 MLflow registration proves reproducibility and lineage. It does not imply deployment approval.
 
@@ -245,10 +246,10 @@ Principal live evidence:
 
 | Surface | Run ID | Contract | Outcome |
 |---|---:|---|---|
-| Appliances scale ETL | `870720668226580` | lakehouse certification v1 | 11/11 pass |
-| Counted replay | `940162686328743` | replay and table-state invariants | 11/11 pass |
-| Distributed ALS | `16821026705008` | temporal benchmark v4 | 15/15 pass; popularity retained |
-| Causal SASRec | `334941587375930` | SASRec benchmark v1 | 8/8 pass; candidate rejected |
+| Magazine portability | `1080552669029878` | lakehouse certification v2 | 13/13 pass |
+| Appliances scale replay | `926465572087562` | lakehouse certification v2 | 13/13 pass |
+| Distributed ALS | `51888471127820` | temporal benchmark v6 | 15/15 pass; popularity retained |
+| Causal SASRec | `840680417137326` | SASRec benchmark v3 | 8/8 pass; candidate rejected |
 | Managed AI Search | `778127295675418` | AI Search benchmark v3 | 7/7 pass |
 
 ## 7. Failure semantics

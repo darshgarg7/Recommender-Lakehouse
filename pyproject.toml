@@ -36,8 +36,9 @@ vector-search = [
   "databricks-sdk>=0.50",
 ]
 dev = [
-  "pytest>=8.3",
-  "pytest-cov>=6.0",
+  "coverage==7.15.2",
+  "mypy==2.3.0",
+  "PyYAML==6.0.3",
   "ruff==0.11.4",
 ]
 
@@ -54,3 +55,35 @@ addopts = "-q"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+ignore_missing_imports = true
+follow_imports = "skip"
+no_site_packages = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+branch = true
+source = ["marketplace_recommender"]
+omit = [
+  "*/pipelines/databricks*.py",
+  "*/retrieval/sasrec_benchmark.py",
+  "*/retrieval/sasrec_lineage.py",
+  "*/retrieval/sasrec_model.py",
+  "*/retrieval/sasrec_torch.py",
+  "*/retrieval/sasrec_training.py",
+  "*/retrieval/spark_als*.py",
+  "*/retrieval/vector_search.py",
+  "*/serving/endpoint.py",
+]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true

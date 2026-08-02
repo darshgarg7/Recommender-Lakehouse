@@ -35,6 +35,59 @@
     },
     "workspace_tier": "Databricks Free Edition"
   },
+  "cross_domain_validation": {
+    "aggregate": {
+      "bronze_metadata_rows": 97718,
+      "bronze_unique_review_payloads": 2176871,
+      "gold_training_labels": 1975120,
+      "landed_lines": 2297820,
+      "silver_interactions": 2176870
+    },
+    "claims_production_multi_domain_scale": false,
+    "classification": "cross-domain schema portability",
+    "runs": [
+      {
+        "assertion_count": 13,
+        "bronze_metadata_rows": 3391,
+        "bronze_unique_review_payloads": 70922,
+        "category": "Magazine_Subscriptions",
+        "contract_version": "lakehouse-certification/v2",
+        "duration_seconds": 168.212,
+        "failed_assertion_count": 0,
+        "gold_training_labels": 53897,
+        "job_id": 324020003477621,
+        "landed_lines": 74888,
+        "manifest_min_replay_attempts": 7,
+        "run_id": 1080552669029878,
+        "silver_interactions": 70922,
+        "source_set_sha256": "583f28aa91a15d432c0d027eae92c443bc327b09f96d01c777b37254115998e5",
+        "status": "SUCCESS",
+        "table_state_sha256": "258bc2b0cb3ade559b87441286f47dcd750a982a24ca6a89fa0c5a03cea18274",
+        "target": "dev"
+      },
+      {
+        "assertion_count": 13,
+        "bronze_metadata_rows": 94327,
+        "bronze_unique_review_payloads": 2105949,
+        "category": "Appliances",
+        "contract_version": "lakehouse-certification/v2",
+        "duration_seconds": 179.316,
+        "failed_assertion_count": 0,
+        "gold_training_labels": 1921223,
+        "job_id": 695192764244318,
+        "landed_lines": 2222932,
+        "manifest_min_replay_attempts": 6,
+        "run_id": 926465572087562,
+        "silver_interactions": 2105948,
+        "source_set_sha256": "68848385a0ab7f2406efd779303b74caa01d931a9cc37bd8bf4220bc89e22bd9",
+        "status": "SUCCESS",
+        "table_state_sha256": "01c964cb1812841d6766fe5ad233cba2965c83c0fe4f627c2390315a2b4a868a",
+        "target": "scale"
+      }
+    ],
+    "shared_asset_bundle": "databricks.yml",
+    "workspace_tier": "Databricks Free Edition"
+  },
   "scale_benchmark": {
     "dataset": {
       "category": "Appliances",
@@ -125,10 +178,10 @@
     },
     "dataset": {
       "positive_definition": "verified_purchase = true AND rating >= 4",
-      "source_delta_version": 2,
+      "source_delta_version": 8,
       "source_table": "workspace.scale_silver.silver_interactions",
-      "train_cutoff": 1635969291151,
-      "validation_cutoff": 1660751898111
+      "train_cutoff": 1635971152937,
+      "validation_cutoff": 1660750492358
     },
     "evaluation": {
       "release_qualified": false,
@@ -137,76 +190,76 @@
       "selection_split": "validation",
       "serving_champion": "popularity",
       "target_policy": "first warm previously-unseen positive per user",
-      "users": 4313,
+      "users": 4316,
       "validation_selected_candidate": "temporal_hybrid_rrf",
-      "validation_users": 4474
+      "validation_users": 4467
     },
     "models": [
       {
-        "candidate_recall_at_100": 0.0941340134,
+        "candidate_recall_at_100": 0.0943002780,
         "catalog_coverage_at_10": 0.0005727611,
         "is_champion": true,
         "label": "Popularity",
-        "ndcg_at_10": 0.0089094516,
-        "recall_at_10": 0.0169255738
+        "ndcg_at_10": 0.0089032588,
+        "recall_at_10": 0.0169138091
       },
       {
-        "candidate_recall_at_100": 0.0512404359,
-        "catalog_coverage_at_10": 0.0324837377,
+        "candidate_recall_at_100": 0.0611677479,
+        "catalog_coverage_at_10": 0.0325655607,
         "is_champion": false,
         "label": "Spark implicit ALS",
-        "ndcg_at_10": 0.0045022876,
-        "recall_at_10": 0.0088105727
+        "ndcg_at_10": 0.0064385236,
+        "recall_at_10": 0.0132066728
       },
       {
-        "candidate_recall_at_100": 0.0985392998,
-        "catalog_coverage_at_10": 0.0022092215,
+        "candidate_recall_at_100": 0.1000926784,
+        "catalog_coverage_at_10": 0.0021683099,
         "is_champion": false,
         "is_validation_selected": true,
         "label": "Temporal hybrid RRF",
-        "ndcg_at_10": 0.0076312391,
-        "recall_at_10": 0.0153025736
+        "ndcg_at_10": 0.0096073625,
+        "recall_at_10": 0.0192307692
       }
     ],
     "run": {
-      "benchmark_id": "d4ba9380331d38d7fd1b8b9d40de3a151ab5ff3a718d04ea4b14ec6f2abfb721",
+      "benchmark_id": "6b6e1a581cee546484df288c2c85e044756fcbbc1701f1ce26c7c79ba0477a3f",
       "bootstrap_implementation_sha256": "0d863c3c98cd25c6e9aad7394bcb6b282284ae67bb74b5ba1cf14cd1ff742f1d",
       "check_count": 15,
-      "contract_version": "spark-als-temporal-benchmark/v4",
-      "duration_seconds": 299.398,
+      "contract_version": "spark-als-temporal-benchmark/v6",
+      "duration_seconds": 282.408,
       "failed_check_count": 0,
-      "implementation_sha256": "08fce72f019b93f2acb2afcaede92d3d6e58d81718c2e39867d576bca9d15dec",
+      "implementation_sha256": "8e93fac4f82eb7b9bdc1b207fa963af211a2d3a89c9b9b571942972dfc95232f",
       "job_id": 585260312300256,
-      "measured_logic_seconds": 236.876980491,
-      "run_id": 16821026705008,
+      "measured_logic_seconds": 223.587749637,
+      "run_id": 51888471127820,
       "status": "SUCCESS",
-      "summary_sha256": "a1aa1a067986bf26cfe882d84b025ffdc3e37b8bc37ae2aef32fcaf39cc280c8"
+      "summary_sha256": "7efce4b388743b0e3fb766a3fe99a911bc64880a71dde4185b5aa1ab2507e5ed"
     },
     "training": {
-      "events": 345734,
+    "events": 345729,
       "items": 24443,
-      "pairs": 345066,
+    "pairs": 345061,
       "positive_events": 1623254,
-      "users": 145552
+    "users": 145551
     },
     "uncertainty_vs_popularity": {
       "candidate_recall_at_100": {
-        "lower": 0.0013911431,
-        "point_estimate": 0.0044052863,
-        "two_sided_p_value": 0.0039996000,
-        "upper": 0.0076512868
+        "lower": 0.0030120482,
+        "point_estimate": 0.0057924004,
+        "two_sided_p_value": 0.0001999800,
+        "upper": 0.0085727525
       },
       "ndcg_at_10": {
-        "lower": -0.0028981724,
-        "point_estimate": -0.0012782125,
-        "two_sided_p_value": 0.1267873213,
-        "upper": 0.0003750151
+        "lower": -0.0009869296,
+        "point_estimate": 0.0007041037,
+        "two_sided_p_value": 0.4241575842,
+        "upper": 0.0026173646
       },
       "recall_at_10": {
-        "lower": -0.0044052863,
-        "point_estimate": -0.0016230002,
-        "two_sided_p_value": 0.2867713229,
-        "upper": 0.0011592859
+        "lower": -0.0006950880,
+        "point_estimate": 0.0023169601,
+        "two_sided_p_value": 0.1453854615,
+        "upper": 0.0053290083
       }
     },
     "workspace_tier": "Databricks Free Edition"
@@ -219,7 +272,7 @@
       "model_path": "/Volumes/workspace/default/marketplace_landing/scale/appliances/models/sasrec_encoder.pt",
       "recommendations_table": "workspace.scale_serving.sasrec_offline_recommendations",
       "registered_model_name": "workspace.scale_serving.marketplace_sasrec_encoder",
-      "registered_model_version": "1"
+      "registered_model_version": "2"
     },
     "configuration": {
       "attention_heads": 4,
@@ -232,40 +285,40 @@
       "transformer_layers": 2
     },
     "dataset": {
-      "source_delta_version": 2,
+      "source_delta_version": 8,
       "source_table": "workspace.scale_silver.silver_interactions",
       "test_users": 4000,
-      "training_examples": 47850,
+      "training_examples": 47853,
       "training_users": 30000,
       "validation_users": 4000,
-      "vocabulary_items": 40619
+      "vocabulary_items": 40622
     },
     "deployment": {
       "alias": null,
       "decision_basis": "validation-only",
       "experiment_name": "/Shared/marketplace-recommender-scale",
-      "mlflow_run_id": "8c6ec9445e3f41b7b8f176997108a5d6",
-      "model_uri": "models:/m-1ed32de5908b48c0a7e1a796f2e4c05a",
+      "mlflow_run_id": "3f130dabc4be4ae4aaef2fed89cd03b4",
+      "model_uri": "models:/m-f38ac02a4969465ab9da150d1a6b5884",
       "status": "rejected",
       "test_was_used_for_promotion": false
     },
     "run": {
-      "benchmark_id": "e05ff8e3df2504dd9853dc7cbf6957eff90e9da695de82aa3ab5d5b09dea0832",
+      "benchmark_id": "1ea170077dee5009fe0a8cb24403e6f77db0246deb46c8138813b2c0cc165da7",
       "check_count": 8,
-      "contract_version": "sasrec-temporal-benchmark/v1",
-      "duration_seconds": 604.642,
+      "contract_version": "sasrec-temporal-benchmark/v3",
+      "duration_seconds": 594.875,
       "failed_check_count": 0,
-      "implementation_sha256": "fbe8ba918d9a00133fea47ee3cdb6efcbb82005ced92db742b4b210e603a0c76",
+      "implementation_sha256": "4f25e97d73d2381dbb4f5a65d858af2f5190c8e12dcf2510e48b877bad788a9a",
       "job_id": 1117814786024670,
-      "run_id": 334941587375930,
+      "run_id": 840680417137326,
       "status": "SUCCESS"
     },
     "test": {
       "paired_ndcg_delta_vs_popularity": {
-        "lower": -0.0072805080,
-        "point_estimate": -0.0055249043,
+        "lower": -0.0078602259,
+        "point_estimate": -0.0060568569,
         "two_sided_p_value": 0.0003999200,
-        "upper": -0.0038327301
+        "upper": -0.0044662402
       },
       "popularity": {
         "candidate_recall_at_100": 0.09325,
@@ -273,9 +326,9 @@
         "recall_at_10": 0.01425
       },
       "sasrec": {
-        "candidate_recall_at_100": 0.005,
-        "ndcg_at_10": 0.0005319526,
-        "recall_at_10": 0.0015
+        "candidate_recall_at_100": 0.00625,
+        "ndcg_at_10": 0.0,
+        "recall_at_10": 0.0
       }
     },
     "workspace_tier": "Databricks Free Edition"
