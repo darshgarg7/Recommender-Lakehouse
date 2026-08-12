@@ -97,10 +97,6 @@ Exact configurations, table sizes, intervals, run identities, and caveats live i
 
 ## Real workspace evidence
 
-These are sanitized captures from the signed-in Databricks workspace. Run IDs in the JSON are
-correlation identifiers because the underlying workspace is private; the captures make the DAG,
-lineage, and benchmark output reviewable without pretending those IDs are public links.
-
 | Six-task serverless DAG | MLflow registered-model lineage |
 |---|---|
 | <img src="assets/screenshots/databricks-job-dag.png" alt="Databricks job DAG with successful tasks" width="100%"> | <img src="assets/screenshots/mlflow-model-lineage.png" alt="MLflow model lineage from Silver table to registered SASRec model" width="100%"> |
